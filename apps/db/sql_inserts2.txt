@@ -1,0 +1,106 @@
+PRAGMA foreign_keys = ON;
+
+-- =========================================================
+-- 1) EXPERIMENT (54 combinaciones corpus x tokenizer x mc con allowed_durations = basic_set)
+-- =========================================================
+
+INSERT OR IGNORE INTO experiment (id_corpus, id_tk, id_mc, id_ad, name, descripcion)
+SELECT
+  c.id,
+  tk.id,
+  mc.id,
+  ad.id,
+
+  c.name || '_' || tk.name || '_' || mc.tonality || '_' || REPLACE(mc.time_signature, '/', '_') AS name,
+
+  'Experiment using corpus "' || c.name ||
+  '", tokenizer "' || tk.name ||
+  '", tonality "' || mc.tonality ||
+  '", time signature "' || mc.time_signature ||
+  '", and allowed durations set "' || ad.name || '".' AS descripcion
+
+FROM corpus c
+CROSS JOIN tokenizer_algorithm tk
+CROSS JOIN music_context mc
+JOIN allowed_durations ad ON ad.name = 'basic_set';
+
+-- =========================================================
+-- 2) TRANSFORMER ARCHITECTURE (kurt001)
+-- =========================================================
+
+INSERT OR IGNORE INTO transformer_architecture
+(name, type, d_model, n_heads, n_layers, d_ff, dropout, max_seq_len)
+VALUES
+('kurt001', 'decoder_only', 512, 8, 6, 2048, 0.1, 512);
+
+
+-- =========================================================
+-- 3) RUNTIME TRAIN (train_2 y train_35)
+-- =========================================================
+
+INSERT OR IGNORE INTO runtime_train
+(name, epochs, batch_size)
+VALUES
+('train_2', 2, 32),
+('train_35', 35, 32);
+
+
+-- =========================================================
+-- 4) RUNTIME GENERATE (generate_5)
+-- =========================================================
+
+INSERT OR IGNORE INTO runtime_generate
+(name, temperature, max_len, num_productions, top_k, top_p, repetition_penalty)
+VALUES
+('generate_5', 1.2, 512, 5, 25, 0.9, 1.1);
+
+
+-- =========================================================
+-- 5) MODEL (uno por experimento, usando kurt001 + train_35)
+-- =========================================================
+
+INSERT OR IGNORE INTO model (
+    name, id_ta, id_exp, id_rt,
+    description, train_start_time, train_end_time, train_total_time, train_date
+)
+SELECT
+  ta.name || '_' ||
+  c.name || '_' ||
+  tk.name || '_' ||
+  mc.tonality || '_' ||
+  REPLACE(mc.time_signature, '/', '_') AS name,
+
+  ta.id  AS id_ta,
+  e.id   AS id_exp,
+  rt.id  AS id_rt,
+
+  NULL   AS description,
+  NULL   AS train_start_time,
+  NULL   AS train_end_time,
+  NULL   AS train_total_time,
+  NULL   AS train_date
+
+FROM experiment e
+JOIN corpus c ON e.id_corpus = c.id
+JOIN tokenizer_algorithm tk ON e.id_tk = tk.id
+JOIN music_context mc ON e.id_mc = mc.id
+JOIN transformer_architecture ta ON ta.name = 'kurt001'
+JOIN runtime_train rt ON rt.name = 'train_35';
+
+
+-- =========================================================
+-- 6) SNAPSHOT_GENERATION (opcional)
+-- Si quieres crear 1 snapshot por cada modelo usando generate_5,
+-- descomenta este bloque.
+-- =========================================================
+/*
+INSERT INTO snapshot_generation (id_rg, id_model, snapshot_datetime)
+SELECT
+  rg.id,
+  m.id,
+  datetime('now')
+FROM model m
+JOIN runtime_generate rg ON rg.name = 'generate_5'
+ON CONFLICT DO NOTHING;
+*/
+

@@ -1,0 +1,161 @@
+CREATE TABLE "corpus" (
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "name" TEXT NOT NULL UNIQUE,
+    "subcorpus" TEXT,
+    "descripcion" TEXT
+);
+
+CREATE TABLE "tokenizer_algorithm" (
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "name" TEXT NOT NULL UNIQUE,
+    "description" TEXT
+);
+
+
+
+CREATE TABLE "allowed_durations" (
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "name" TEXT NOT NULL UNIQUE,
+    "durations" TEXT NOT NULL,
+    "description" TEXT
+);
+
+
+
+CREATE TABLE "music_context" (
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "name" TEXT NOT NULL UNIQUE,
+    "tonality" TEXT,
+    "time_signature" TEXT
+);
+
+
+
+CREATE TABLE "experiment" (
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    "id_corpus" INTEGER NOT NULL,
+    "id_tk" INTEGER NOT NULL,
+    "id_mc" INTEGER NOT NULL,
+    "id_ad" INTEGER NOT NULL,
+
+    "name" TEXT,
+    "descripcion" TEXT,
+
+    UNIQUE ("id_corpus","id_tk","id_mc","id_ad"),
+
+    FOREIGN KEY ("id_corpus") REFERENCES "corpus"("id"),
+    FOREIGN KEY ("id_tk") REFERENCES "tokenizer_algorithm"("id"),
+    FOREIGN KEY ("id_mc") REFERENCES "music_context"("id"),
+    FOREIGN KEY ("id_ad") REFERENCES "allowed_durations"("id")
+);
+
+
+
+
+CREATE TABLE "runtime_train" (
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "name" TEXT NOT NULL UNIQUE,
+
+    "epochs" INTEGER,
+    "batch_size" INTEGER,
+    "learning_rate" REAL,
+    "weight_decay" REAL,
+    "gradient_clip" REAL,
+    "scheduler" TEXT,
+    "warmup_steps" INTEGER,
+    "accumulation_steps" INTEGER,
+    "early_stopping" INTEGER,
+    "patience" INTEGER,
+    "save_every" INTEGER
+);
+
+
+CREATE TABLE "transformer_architecture" (
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "name" TEXT NOT NULL UNIQUE,
+
+    "type" TEXT,
+    "d_model" INTEGER,
+    "n_heads" INTEGER,
+    "n_layers" INTEGER,
+    "d_ff" INTEGER,
+    "dropout" REAL,
+    "max_seq_len" INTEGER,
+
+    "attention_type" TEXT,
+    "activation" TEXT,
+    "positional_encoding" TEXT,
+    "layer_norm_eps" REAL,
+    "bias" INTEGER,
+    "weight_tying" INTEGER,
+    "embedding_dropout" REAL,
+    "residual_dropout" REAL,
+    "attention_dropout" REAL,
+    "initializer" TEXT,
+    "rotary_dim" INTEGER,
+    "encoder_layers" INTEGER,
+    "decoder_layers" INTEGER
+);
+
+
+
+CREATE TABLE "runtime_generate" (
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "name" TEXT NOT NULL UNIQUE,
+
+    "temperature" REAL,
+    "max_len" INTEGER,
+    "num_productions" INTEGER,
+
+    "top_k" INTEGER,
+    "top_p" REAL,
+    "repetition_penalty" REAL,
+    "greedy" INTEGER,
+    "seed" INTEGER,
+    "device" TEXT,
+    "mixed_precision" INTEGER,
+    "num_workers" INTEGER,
+    "deterministic" INTEGER
+);
+
+
+CREATE TABLE "model" (
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    "name" TEXT NOT NULL UNIQUE,
+
+    "id_ta" INTEGER NOT NULL,
+    "id_exp" INTEGER NOT NULL,
+    "id_rt" INTEGER NOT NULL,
+
+    "description" TEXT,
+
+    "vocab_file" TEXT,
+
+    "train_start_time" TEXT,
+    "train_end_time" TEXT,
+    "train_total_time" REAL,
+    "train_date" TEXT,
+
+    FOREIGN KEY ("id_ta") REFERENCES "transformer_architecture"("id"),
+    FOREIGN KEY ("id_exp") REFERENCES "experiment"("id"),
+    FOREIGN KEY ("id_rt") REFERENCES "runtime_train"("id")
+);
+
+
+CREATE TABLE "snapshot_generation" (
+    "id" INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    "id_rg" INTEGER NOT NULL,
+    "id_model" INTEGER NOT NULL,
+
+    "snapshot_datetime" TEXT NOT NULL,
+
+    FOREIGN KEY ("id_rg") REFERENCES "runtime_generate"("id"),
+    FOREIGN KEY ("id_model") REFERENCES "model"("id")
+);
+
+
+
+
+
