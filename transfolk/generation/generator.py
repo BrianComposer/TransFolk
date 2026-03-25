@@ -3,7 +3,8 @@
 # ------------------------------
 import torch
 import torch.nn.functional as F
-from music21 import stream, note, meter, duration
+from datetime import datetime
+from music21 import stream, note, meter, duration, instrument, metadata
 
 
 def sample_next_token(logits, temperature=1.0):
@@ -240,6 +241,7 @@ def tokens_to_music21_stream(tokens, allowed_durations, verbose_warnings=True):
     score = stream.Score()
     part = stream.Part()
 
+
     current_measure = None
     current_ts = meter.TimeSignature("4/4")
     measure_duration_target = float(current_ts.barDuration.quarterLength)
@@ -391,5 +393,19 @@ def tokens_to_music21_stream(tokens, allowed_durations, verbose_warnings=True):
 
     close_current_measure_if_needed()
 
+
+
+
+    # ---- AÑADIR AL SCORE ----
     score.append(part)
+
+    # METADATA
+    score.insert(0, metadata.Metadata())
+    score.metadata.title = "Generated Melody"
+    score.metadata.composer = "TransFolk"
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    score.metadata.movementName = f"Generated on {now}"
+    score.metadata.composer = "TransFolk"
+
+
     return score

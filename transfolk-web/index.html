@@ -6,101 +6,191 @@
   <title>TransFolk Generator</title>
 
   <link rel="stylesheet" href="style.css" />
-
   <script src="https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@1.9.0/build/opensheetmusicdisplay.min.js"></script>
 </head>
-
 <body>
+  <div class="app-shell">
+    <header class="hero">
+      <div class="hero__content">
+        <div class="brand-pill">TransFolk</div>
+        <h1>Symbolic Folk Melody Generator</h1>
+        <p>
+          Generate new melodies from a released model, continue from a MusicXML prompt,
+          or condition generation by meter and tonality.
+        </p>
+      </div>
+    </header>
 
-<header>
-  <h1>TransFolk</h1>
-  <p>Symbolic folk melody generation</p>
-</header>
+    <main class="layout">
+      <aside class="sidebar">
+        <section class="card control-card">
+          <div class="card-title-row">
+            <h2>Generation Setup</h2>
+            <span id="modeBadge" class="mode-badge">Mode: Generate</span>
+          </div>
 
-<main>
+          <label class="field">
+            <span class="field-label">Model</span>
+            <select id="modelId"></select>
+          </label>
 
-<section class="panel">
+          <div id="modelInfo" class="model-info">
+            <div class="model-info__placeholder">Select a model to see its metadata.</div>
+          </div>
 
-  <label>
-    Input MusicXML / MXL
-    <input type="file" id="file" accept=".xml,.musicxml,.mxl" />
-  </label>
+          <div class="divider"></div>
 
-  <!-- ✅ NUEVO: selector real de modelos -->
-  <label>
-    Model
-    <select id="modelId"></select>
-  </label>
+          <div class="mode-block">
+            <h3>Prompt Input</h3>
 
-  <!-- ❌ ELIMINADO: algorithm / mode / timeSignature -->
+            <label class="field">
+              <span class="field-label">MusicXML / MXL Prompt</span>
+              <input type="file" id="file" accept=".xml,.musicxml,.mxl" />
+            </label>
 
-  <!-- PARAMS -->
-  <label class="param">
-    <span>Temperature</span>
-    <input type="range" id="temperature" min="0.0" max="2.5" step="0.1" value="1.2"/>
-    <span id="temperatureValue">1.2</span>
-  </label>
+            <div class="file-row">
+              <span id="fileStatus" class="file-status">No prompt loaded</span>
+              <button id="clearFileBtn" class="secondary-btn" type="button" disabled>Remove prompt</button>
+            </div>
+          </div>
 
-  <label class="param">
-    <span>Penalty</span>
-    <input type="range" id="penalty" min="0.0" max="2.5" step="0.1" value="0.5"/>
-    <span id="penaltyValue">0.5</span>
-  </label>
+          <div class="divider"></div>
 
-  <label class="param">
-    <span>Top-K</span>
-    <input type="range" id="topk" min="0" max="50" step="1" value="25"/>
-    <span id="topkValue">25</span>
-  </label>
+          <div class="mode-block">
+            <h3>Conditioning</h3>
 
-  <label class="param">
-    <span>Top-P</span>
-    <input type="range" id="topp" min="0.0" max="1.0" step="0.05" value="0.9"/>
-    <span id="toppValue">0.9</span>
-  </label>
+            <div class="two-cols">
+              <label class="field">
+                <span class="field-label">Time Signature</span>
+                <select id="timeSignatureSelect">
+                  <option value="">Auto / none</option>
+                </select>
+              </label>
 
-  <label>
-    Max length
-    <select id="maxLen">
-      <option value="128">128</option>
-      <option value="256" selected>256</option>
-      <option value="512">512</option>
-      <option value="1024">1024</option>
-    </select>
-  </label>
+              <label class="field">
+                <span class="field-label">Tonality</span>
+                <select id="tonalitySelect">
+                  <option value="">Auto / none</option>
+                </select>
+              </label>
+            </div>
 
-  <div class="actions">
-    <button id="generateBtn">Generate</button>
+            <p class="helper">
+              If a prompt is loaded, conditioning fields are disabled automatically. If no prompt is loaded and both fields are selected, generation uses TS + tonality conditioning.
+            </p>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="mode-block">
+            <h3>Sampling</h3>
+
+            <label class="param">
+              <div class="param__top">
+                <span>Temperature</span>
+                <span id="temperatureValue" class="param-value">1.2</span>
+              </div>
+              <input type="range" id="temperature" min="0.0" max="2.5" step="0.1" value="1.2" />
+            </label>
+
+            <label class="param">
+              <div class="param__top">
+                <span>Penalty</span>
+                <span id="penaltyValue" class="param-value">1.1</span>
+              </div>
+              <input type="range" id="penalty" min="0.0" max="2.5" step="0.1" value="1.1" />
+            </label>
+
+            <label class="param">
+              <div class="param__top">
+                <span>Top-K</span>
+                <span id="topkValue" class="param-value">25</span>
+              </div>
+              <input type="range" id="topk" min="0" max="100" step="1" value="25" />
+            </label>
+
+            <label class="param">
+              <div class="param__top">
+                <span>Top-P</span>
+                <span id="toppValue" class="param-value">0.9</span>
+              </div>
+              <input type="range" id="topp" min="0.0" max="1.0" step="0.05" value="0.9" />
+            </label>
+
+            <label class="field">
+              <span class="field-label">Max length</span>
+              <select id="maxLen">
+                <option value="128">128</option>
+                <option value="256" selected>256</option>
+                <option value="512">512</option>
+                <option value="1024">1024</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="actions">
+            <button id="generateBtn" class="primary-btn" type="button">Generate</button>
+          </div>
+        </section>
+
+        <section class="card log-card">
+          <div class="card-title-row">
+            <h2>Console</h2>
+            <button id="clearLogBtn" class="secondary-btn" type="button">Clear</button>
+          </div>
+          <pre id="log"></pre>
+        </section>
+      </aside>
+
+      <section class="workspace">
+        <section class="card score-card">
+          <div class="card-title-row">
+            <h2>Prompt Score</h2>
+            <span class="score-caption">Loaded from user input</span>
+          </div>
+          <div id="score" class="score-panel empty-state">No prompt score loaded</div>
+        </section>
+
+        <section class="card score-card">
+          <div class="card-title-row">
+            <h2>Generated Score</h2>
+            <span class="score-caption">Rendered from generated MusicXML</span>
+          </div>
+
+          <div id="outputScore" class="score-panel empty-state">No generation yet</div>
+
+          <div class="player-bar">
+            <div class="transport-group">
+              <button id="playBtn" class="transport-btn" type="button" disabled>▶ Play</button>
+              <button id="pauseBtn" class="transport-btn" type="button" disabled>⏸ Pause</button>
+              <button id="stopBtn" class="transport-btn" type="button" disabled>⏹ Stop</button>
+            </div>
+
+            <div class="slider-group">
+              <label class="inline-field">
+                <span>Volume</span>
+                <input id="volume" type="range" min="0" max="1" step="0.01" value="0.8" />
+              </label>
+
+              <label class="inline-field">
+                <span>Tempo</span>
+                <span id="tempoValue" class="inline-value">120</span>
+                <input id="tempo" type="range" min="40" max="240" step="1" value="120" />
+              </label>
+            </div>
+          </div>
+
+          <div class="downloads">
+            <a id="downloadXml" class="download-link hidden" target="_blank" rel="noopener noreferrer">Download XML</a>
+            <a id="downloadMidi" class="download-link hidden" target="_blank" rel="noopener noreferrer">Download MIDI</a>
+          </div>
+        </section>
+      </section>
+    </main>
   </div>
 
-  <pre id="log"></pre>
-
-</section>
-
-<section class="score-wrap">
-  <h2>Score</h2>
-  <div id="score"></div>
-  <div id="outputScore"></div>
-
-  <button id="playBtn" disabled>▶ Play</button>
-  <button id="pauseBtn" disabled>⏸ Pause</button>
-  <button id="stopBtn" disabled>⏹ Stop</button>
-
-  <input id="volume" type="range" min="0" max="1" step="0.01" value="0.8">
-
-  <label>Tempo: <span id="tempoValue">120</span></label>
-  <input id="tempo" type="range" min="40" max="240" value="120">
-</section>
-
-<a id="downloadXml" class="hidden">Download XML</a>
-<a id="downloadMidi" class="hidden">Download MIDI</a>
-
-</main>
-
-<script src="https://unpkg.com/tone@14.7.77/build/Tone.js"></script>
-<script src="https://unpkg.com/@tonejs/midi"></script>
-
-<script src="app.js"></script>
-
+  <script src="https://unpkg.com/tone@14.7.77/build/Tone.js"></script>
+  <script src="https://unpkg.com/@tonejs/midi"></script>
+  <script src="app.js"></script>
 </body>
 </html>
