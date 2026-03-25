@@ -34,98 +34,128 @@
             <select id="modelId"></select>
           </label>
 
-          <div id="modelInfo" class="model-info">
-            <div class="model-info__placeholder">Select a model to see its metadata.</div>
-          </div>
-
-          <div class="divider"></div>
-
-          <div class="mode-block">
-            <h3>Prompt Input</h3>
-
-            <label class="field">
-              <span class="field-label">MusicXML / MXL Prompt</span>
-              <input type="file" id="file" accept=".xml,.musicxml,.mxl" />
-            </label>
-
-            <div class="file-row">
-              <span id="fileStatus" class="file-status">No prompt loaded</span>
-              <button id="clearFileBtn" class="secondary-btn" type="button" disabled>Remove prompt</button>
+          <!-- MODEL INFO COLLAPSIBLE -->
+          <div class="collapsible open">
+            <div class="collapsible-header">
+              <span>Model Info</span>
+              <button class="collapse-btn" type="button"></button>
+            </div>
+            <div class="collapsible-content">
+              <div id="modelInfo" class="model-info">
+                <div class="model-info__placeholder">Select a model to see its metadata.</div>
+              </div>
             </div>
           </div>
 
           <div class="divider"></div>
 
-          <div class="mode-block">
-            <h3>Conditioning</h3>
-
-            <div class="two-cols">
-              <label class="field">
-                <span class="field-label">Time Signature</span>
-                <select id="timeSignatureSelect">
-                  <option value="">Auto / none</option>
-                </select>
-              </label>
-
-              <label class="field">
-                <span class="field-label">Tonality</span>
-                <select id="tonalitySelect">
-                  <option value="">Auto / none</option>
-                </select>
-              </label>
+          <div class="mode-block collapsible open">
+            <div class="collapsible-header">
+              <h3>Prompt Input</h3>
+              <button class="collapse-btn" type="button"></button>
             </div>
 
-            <p class="helper">
-              If a prompt is loaded, conditioning fields are disabled automatically. If no prompt is loaded and both fields are selected, generation uses TS + tonality conditioning.
-            </p>
+            <div class="collapsible-content">
+
+              <label class="field">
+                <span class="field-label">MusicXML / MXL Prompt</span>
+                <input type="file" id="file" accept=".xml,.musicxml,.mxl" />
+              </label>
+
+              <div class="file-row">
+                <span id="fileStatus" class="file-status">No prompt loaded</span>
+                <button id="clearFileBtn" class="secondary-btn" type="button" disabled>Remove prompt</button>
+              </div>
+
+            </div>
           </div>
 
           <div class="divider"></div>
 
-          <div class="mode-block">
-            <h3>Sampling</h3>
+          <!-- CONDITIONING COLLAPSIBLE -->
+          <div class="mode-block collapsible open">
+            <div class="collapsible-header">
+              <h3>Conditioning</h3>
+              <button class="collapse-btn" type="button"></button>
+            </div>
 
-            <label class="param">
-              <div class="param__top">
-                <span>Temperature</span>
-                <span id="temperatureValue" class="param-value">1.2</span>
+            <div class="collapsible-content">
+              <div class="two-cols">
+                <label class="field">
+                  <span class="field-label">Time Signature</span>
+                  <select id="timeSignatureSelect">
+                    <option value="">Auto / none</option>
+                  </select>
+                </label>
+
+                <label class="field">
+                  <span class="field-label">Tonality</span>
+                  <select id="tonalitySelect">
+                    <option value="">Auto / none</option>
+                  </select>
+                </label>
               </div>
-              <input type="range" id="temperature" min="0.0" max="2.5" step="0.1" value="1.2" />
-            </label>
 
-            <label class="param">
-              <div class="param__top">
-                <span>Penalty</span>
-                <span id="penaltyValue" class="param-value">1.1</span>
-              </div>
-              <input type="range" id="penalty" min="0.0" max="2.5" step="0.1" value="1.1" />
-            </label>
+              <p class="helper">
+                If a prompt is loaded, conditioning fields are disabled automatically. If no prompt is loaded and both fields are selected, generation uses TS + tonality conditioning.
+              </p>
+            </div>
+          </div>
 
-            <label class="param">
-              <div class="param__top">
-                <span>Top-K</span>
-                <span id="topkValue" class="param-value">25</span>
-              </div>
-              <input type="range" id="topk" min="0" max="100" step="1" value="25" />
-            </label>
+          <div class="divider"></div>
 
-            <label class="param">
-              <div class="param__top">
-                <span>Top-P</span>
-                <span id="toppValue" class="param-value">0.9</span>
-              </div>
-              <input type="range" id="topp" min="0.0" max="1.0" step="0.05" value="0.9" />
-            </label>
+          <!-- SAMPLING COLLAPSIBLE -->
+          <div class="mode-block collapsible open">
+            <div class="collapsible-header">
+              <h3>Sampling</h3>
+              <button class="collapse-btn" type="button"></button>
+            </div>
 
-            <label class="field">
-              <span class="field-label">Max length</span>
-              <select id="maxLen">
-                <option value="128">128</option>
-                <option value="256" selected>256</option>
-                <option value="512">512</option>
-                <option value="1024">1024</option>
-              </select>
-            </label>
+            <div class="collapsible-content">
+
+              <label class="param">
+                <div class="param__top">
+                  <span>Temperature</span>
+                  <span id="temperatureValue" class="param-value">1.2</span>
+                </div>
+                <input type="range" id="temperature" min="0.0" max="2.5" step="0.1" value="1.2" />
+              </label>
+
+              <label class="param">
+                <div class="param__top">
+                  <span>Penalty</span>
+                  <span id="penaltyValue" class="param-value">1.1</span>
+                </div>
+                <input type="range" id="penalty" min="0.0" max="2.5" step="0.1" value="1.1" />
+              </label>
+
+              <label class="param">
+                <div class="param__top">
+                  <span>Top-K</span>
+                  <span id="topkValue" class="param-value">25</span>
+                </div>
+                <input type="range" id="topk" min="0" max="100" step="1" value="25" />
+              </label>
+
+              <label class="param">
+                <div class="param__top">
+                  <span>Top-P</span>
+                  <span id="toppValue" class="param-value">0.9</span>
+                </div>
+                <input type="range" id="topp" min="0.0" max="1.0" step="0.05" value="0.9" />
+              </label>
+
+              <label class="field">
+                <span class="field-label">Max length</span>
+                <select id="maxLen">
+                  <option value="128">128</option>
+                  <option value="256" selected>256</option>
+                  <option value="512">512</option>
+                  <option value="1024">1024</option>
+                </select>
+              </label>
+
+            </div>
           </div>
 
           <div class="actions">
@@ -143,12 +173,18 @@
       </aside>
 
       <section class="workspace">
-        <section class="card score-card">
-          <div class="card-title-row">
+
+        <!-- PROMPT SCORE COLLAPSIBLE -->
+        <section class="card score-card collapsible open">
+          <div class="collapsible-header">
             <h2>Prompt Score</h2>
-            <span class="score-caption">Loaded from user input</span>
+            <button class="collapse-btn" type="button"></button>
           </div>
-          <div id="score" class="score-panel empty-state">No prompt score loaded</div>
+
+          <div class="collapsible-content">
+            <span class="score-caption">Loaded from user input</span>
+            <div id="score" class="score-panel empty-state">No prompt score loaded</div>
+          </div>
         </section>
 
         <section class="card score-card">

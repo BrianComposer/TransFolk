@@ -510,3 +510,96 @@ button:hover:not(:disabled) {
     width: 140px;
   }
 }
+
+
+/* =========================
+   COLLAPSIBLE SYSTEM
+========================= */
+
+.collapsible {
+  display: grid;
+  gap: 10px;
+}
+
+/* Header */
+.collapsible-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  gap: 10px;
+}
+
+/* =========================
+   COLLAPSE BUTTON (FUTURISTIC)
+========================= */
+
+.collapse-btn {
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: rgba(255,255,255,0.03);
+  border-radius: 6px;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  backdrop-filter: blur(6px);
+}
+
+/* glow suave */
+.collapse-btn:hover {
+  background: rgba(116, 192, 255, 0.08);
+  box-shadow: 0 0 8px rgba(116, 192, 255, 0.25);
+}
+
+/* flecha */
+.collapse-btn::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  border-right: 2px solid rgba(200,220,255,0.9);
+  border-bottom: 2px solid rgba(200,220,255,0.9);
+  transform: translate(-50%, -60%) rotate(45deg);
+  transition: transform 0.3s ease, border-color 0.2s ease;
+}
+
+/* estado abierto (↓) */
+.collapsible.open .collapse-btn::before {
+  transform: translate(-50%, -40%) rotate(45deg);
+}
+
+/* estado cerrado (→) */
+.collapsible:not(.open) .collapse-btn::before {
+  transform: translate(-40%, -50%) rotate(-45deg);
+}
+
+/* micro animación al click */
+.collapse-btn:active {
+  transform: scale(0.92);
+}
+
+/* Rotación */
+.collapsible:not(.open) .collapse-btn::before {
+  transform: rotate(-45deg);
+}
+
+/* Contenido */
+.collapsible-content {
+  overflow: hidden;
+  transition: max-height 0.35s ease, opacity 0.25s ease;
+}
+
+/* Estado cerrado */
+.collapsible:not(.open) .collapsible-content {
+  max-height: 0;
+  opacity: 0;
+}
+
+/* Estado abierto */
+.collapsible.open .collapsible-content {
+  max-height: 2000px;
+  opacity: 1;
+}

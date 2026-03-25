@@ -749,3 +749,19 @@ async function downloadFile(url, filename) {
   a.click();
   a.remove();
 }
+
+
+
+// ==========================
+// COLLAPSIBLE LOGIC
+// ==========================
+
+document.querySelectorAll(".collapsible").forEach((block) => {
+  const header = block.querySelector(".collapsible-header");
+
+  if (!header) return;
+
+  header.addEventListener("click", () => {
+    block.classList.toggle("open");
+  });
+});
