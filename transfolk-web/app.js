@@ -396,6 +396,9 @@ async function renderPromptScore(file) {
   const objectUrl = URL.createObjectURL(file);
 
   try {
+    // limpiar estado vacío correctamente
+    els.score.innerHTML = "";
+    els.score.classList.remove("empty-state");
     clearEmptyState(els.score);
 
     if (!inputOsmd) {
@@ -410,6 +413,7 @@ async function renderPromptScore(file) {
 
     await inputOsmd.load(objectUrl);
     inputOsmd.render();
+    animateScore(els.score);s
   } finally {
     URL.revokeObjectURL(objectUrl);
   }
@@ -554,6 +558,10 @@ async function loadScore(path) {
 
   await outputOsmd.load(url);
   outputOsmd.render();
+  if (progressBar) {
+      progressBar.classList.add("hidden");
+    }
+  animateScore(document.getElementById("outputScore"));
 }
 
 async function loadGeneratedMidi(path) {
@@ -791,3 +799,37 @@ if (clearFileBtn && promptScoreBlock) {
     promptScoreBlock.classList.remove("visible");
   });
 }
+
+
+
+// ==========================
+// GENERATE PROGRESS CONTROL
+// ==========================
+
+const generateBtn = document.getElementById("generateBtn");
+const progressBar = document.getElementById("generateProgress");
+
+// cuando empieza generación
+if (generateBtn && progressBar) {
+  generateBtn.addEventListener("click", () => {
+    progressBar.classList.remove("hidden");
+  });
+}
+
+// ==========================
+// REVEAL SCORE
+// ==========================
+function animateScore(el) {
+  if (!el) return;
+
+  el.classList.remove("animate-in");
+
+  // fuerza reflow para reiniciar animación
+  void el.offsetWidth;
+
+  el.classList.add("animate-in");
+}
+
+
+
+

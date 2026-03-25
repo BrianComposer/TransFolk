@@ -671,3 +671,106 @@ button:hover:not(:disabled) {
     transform: translateY(0);
   }
 }
+
+
+
+/* =========================
+   GENERATE PROGRESS BAR
+========================= */
+
+.generate-progress {
+  height: 3px;
+  width: 100%;
+  border-radius: 999px;
+  margin-bottom: 12px;
+  position: relative;
+  overflow: hidden;
+  background: rgba(255,255,255,0.05);
+}
+
+/* shimmer animado */
+.generate-progress::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(116,192,255,0.2) 20%,
+    rgba(116,192,255,0.8) 50%,
+    rgba(116,192,255,0.2) 80%,
+    transparent 100%
+  );
+  animation: progressFlow 1.2s linear infinite;
+}
+
+/* glow exterior */
+.generate-progress::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(116,192,255,0.15);
+  filter: blur(6px);
+  opacity: 0.6;
+}
+
+/* animación */
+@keyframes progressFlow {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+
+/* =========================
+   SCORE REVEAL ANIMATION
+========================= */
+
+.score-panel.animate-in {
+  animation: scoreReveal 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes scoreReveal {
+  from {
+    opacity: 0;
+    transform: scale(0.98) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+
+
+/* =========================
+   CARD HOVER ENHANCEMENT
+========================= */
+
+.card {
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease,
+    transform 0.2s ease;
+}
+
+/* hover principal */
+.card:hover {
+  border-color: rgba(116,192,255,0.35);
+  box-shadow:
+    0 25px 60px rgba(0,0,0,0.45),
+    0 0 0 1px rgba(116,192,255,0.15);
+}
+
+@media (hover: hover) {
+  .card:hover {
+    border-color: rgba(116,192,255,0.3);
+    box-shadow: 0 25px 60px rgba(0,0,0,0.45);
+    transform: translateY(-2px);
+  }
+}
+
+
