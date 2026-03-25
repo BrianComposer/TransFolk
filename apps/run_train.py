@@ -1,6 +1,6 @@
 from transfolk_config import *
 from apps.db.config_registry import ConfigRegistry
-from transfolk import main2
+from transfolk import main
 
 if __name__ == "__main__":
     registry = ConfigRegistry()
@@ -14,11 +14,11 @@ if __name__ == "__main__":
     #exp = registry.find_by_name("todos_baseline_major_2_4")
     # rt = registry.find_by_name("train_2")
     model = registry.find_by_name("kurt001_todos_baseline_x_x")
-    model = main2.run_train(model)
+    model = main.run_train(model)
     registry.update_model(model) #guardamos en BD datetimes y vocab_file
 
     model2 = registry.find_by_name("kurt001_todos_patterns_x_x")
-    model2 = main2.run_train(model2)
+    model2 = main.run_train(model2)
     registry.update_model(model2)  # guardamos en BD datetimes y vocab_file
 
 

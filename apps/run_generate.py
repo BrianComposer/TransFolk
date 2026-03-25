@@ -1,6 +1,6 @@
 from transfolk_config import *
 from apps.db.config_registry import ConfigRegistry
-from transfolk import main2
+from transfolk import main
 
 if __name__ == "__main__":
     registry = ConfigRegistry()
@@ -15,7 +15,7 @@ if __name__ == "__main__":
     rt = registry.find_by_name("generate_5")
     model = registry.find_by_name("kurt001_todos_momet_x_x")
 
-    main2.run_generate(model, rt)
-    # main2.run_generate_from_musicxml_prompt(model, rt,
+    main.run_generate(model, rt)
+    # main.run_generate_from_musicxml_prompt(model, rt,
     # r"G:\Mi unidad\Programacion\Python\TransFolk\experiments\prompts\prompt1.xml")
-    #main2.run_generate_from_TS_tonality(model, rt, "2/4", "major")
+    #main.run_generate_from_TS_tonality(model, rt, "2/4", "major")

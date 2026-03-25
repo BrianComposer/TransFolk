@@ -7,9 +7,9 @@ from transfolk_tokenization.tokenizer import (
 
 from .model.transformer import MusicTransformer
 from .generation.generator import (
-    generate_sequence_from_prompt,
-    tokens_to_music21_stream
+    generate_sequence_from_prompt
 )
+from transfolk_tokenization.decoder import tokens_to_music21_stream
 
 
 class TransFolkPipeline:
@@ -78,11 +78,14 @@ class TransFolkPipeline:
           topK: int = 25,
           topP: float = 1.0
           ):
-            # 1. Generar tokens iniciales
             prompt_tokens = []
-            prompt_tokens.append("TS_2/4")
-            prompt_tokens.append("MODE_major")
-            prompt_tokens.append("BAR") #ojo que este token solo esta en algunos algoritmos
+            # 1. Generar tokens iniciales
+            for t in ["TS_2/4", "MODE_major", "BAR"]:
+                if t in self.vocab:
+                    prompt_tokens.append(t)
+                else:
+                    print(f"Token not in vocabulary: {t}")
+
 
             # 3. Convertir tokens del prompt a IDs
             try:

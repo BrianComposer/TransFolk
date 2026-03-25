@@ -7,16 +7,15 @@ from logging import exception
 import torch
 from torch.utils.data import DataLoader
 
+from transfolk_config import *
 from .model.dataset import MusicDataset
 from .model.transformer import MusicTransformer
 from .training.trainer import train
-from .generation.generator import (generate_sequence,
-                                    tokens_to_music21_stream,
-                                   tokens_to_music21_stream_with_ts,
-                                   generate_sequence_from_prompt)
+from .generation.generator import generate_sequence, generate_sequence_from_prompt
 from .utils.training_logger import save_loss_to_json
 from transfolk_tokenization.tokenizer import process_musicxml_file
-from transfolk_config import *
+from transfolk_tokenization.decoder import tokens_to_music21_stream, tokens_to_music21_stream_with_ts
+
 
 def run_train(
     model: Model):
