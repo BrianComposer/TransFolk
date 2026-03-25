@@ -765,3 +765,29 @@ document.querySelectorAll(".collapsible").forEach((block) => {
     block.classList.toggle("open");
   });
 });
+
+// ==========================
+// PROMPT SCORE VISIBILITY + COLLAPSE
+// ==========================
+
+const fileInput = document.getElementById("file");
+const clearFileBtn = document.getElementById("clearFileBtn");
+const promptScoreBlock = document.querySelector(".prompt-score-block");
+
+// al cargar prompt → mostrar + abrir
+if (fileInput && promptScoreBlock) {
+  fileInput.addEventListener("change", () => {
+    if (fileInput.files && fileInput.files.length > 0) {
+      promptScoreBlock.classList.add("visible");
+      promptScoreBlock.classList.add("open");
+    }
+  });
+}
+
+// al eliminar prompt → ocultar completamente
+if (clearFileBtn && promptScoreBlock) {
+  clearFileBtn.addEventListener("click", () => {
+    promptScoreBlock.classList.remove("open");
+    promptScoreBlock.classList.remove("visible");
+  });
+}

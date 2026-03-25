@@ -603,3 +603,71 @@ button:hover:not(:disabled) {
   max-height: 2000px;
   opacity: 1;
 }
+
+/* =========================
+   COLLAPSIBLE COMPACT MODE
+========================= */
+
+/* cuando está cerrado */
+.collapsible:not(.open) {
+  gap: 0;
+}
+
+/* header más compacto */
+.collapsible:not(.open) .collapsible-header {
+  padding: 6px 0;
+}
+
+/* reducir tamaño del título */
+.collapsible:not(.open) h3,
+.collapsible:not(.open) h2,
+.collapsible:not(.open) span {
+  opacity: 0.75;
+  font-size: 0.92em;
+}
+
+/* quitar separación interna */
+.collapsible:not(.open) .collapsible-content {
+  margin: 0;
+  padding: 0;
+}
+
+/* opcional: ligera compresión visual del bloque */
+.collapsible:not(.open) {
+  transform: scaleY(0.95);
+  transform-origin: top;
+  opacity: 0.9;
+}
+
+/* transición suave */
+.collapsible {
+  transition: all 0.25s ease;
+}
+
+
+/* =========================
+   PROMPT SCORE VISIBILITY
+========================= */
+
+/* estado por defecto: oculto */
+.prompt-score-block {
+  display: none;
+}
+
+/* cuando hay prompt → visible */
+.prompt-score-block.visible {
+  display: block;
+  animation: fadeInScore 0.35s ease;
+}
+
+/* animación */
+@keyframes fadeInScore {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
