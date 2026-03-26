@@ -1,14 +1,68 @@
 # TransFolk
+<p>
+  <b>Transformer-based Folk Melody Generation</b><br>
+  Symbolic AI for structured, style-aware music generation
+</p>
 
 **TransFolk** is a transformer-based system for generating monophonic folk melodies from a curated Iberian corpus. It provides an end-to-end pipeline covering preprocessing, tokenisation, training, generation, and evaluation of symbolic music.
 
-The system is designed to study how different symbolic representations affect musical structure, stylistic fidelity, and generative behaviour.
+The platform integrates **data preprocessing, tokenisation, training, generation, evaluation, API deployment, and an interactive frontend**.
+
+---
+
+## Product Preview
+
+
+### Generated Melodies
+
+Outputs are rendered as structured musical scores:
+
+<p align="center">
+  <img src="doc/images/melody1.jpg" width="85%">
+</p>
+
+<p align="center">
+  <img src="doc/images/melody2.jpg" width="85%">
+</p>
+
+---
+
+### Interactive Model Inspection
+
+Each model exposes full metadata for reproducibility and analysis:
+
+<p align="center">
+  <img src="doc/images/modelinfo.jpg" width="60%">
+</p>
+
+---
+
+### Generation Control Interface
+
+Fine-grained control over sampling parameters:
+
+<p align="center">
+  <img src="doc/images/parameters.jpg" width="60%">
+</p>
+
+---
+
+### Prompt Conditioning
+
+The system allows generation conditioned on real symbolic input:
+
+<p align="center">
+  <img src="doc/images/melody_prompt.jpg" width="85%">
+</p>
+
 
 ---
 
 ## Features
 
-* Decoder-only Transformer architecture (PyTorch)
+* Decoder-only Transformer (PyTorch)
+* Modular design for future architectures (encoder-decoder, hierarchical, etc.)
+
 * Multiple tokenisation strategies:
 
   * Event-based (baseline)
@@ -19,9 +73,9 @@ The system is designed to study how different symbolic representations affect mu
   * Time signatures (2/4, 3/4, 6/8)
   * Mode conditioning (major / minor)
 * MusicXML and MIDI generation
+* MIDI (playback-ready)
 * Full preprocessing pipeline from raw symbolic data
 * Evaluation framework including:
-
   * Token entropy and conditional entropy
   * Modal stability
   * Pattern retention metrics
@@ -58,7 +112,7 @@ run.py                    # Entry point for training
 Clone the repository:
 
 ```bash
-git clone https://github.com/your_username/transfolk.git
+git clone https://github.com/BrianComposer/transfolk.git
 cd transfolk
 ```
 
