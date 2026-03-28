@@ -5,7 +5,7 @@ from transfolk_tokenization.tokenizer import (
     process_musicxml_file
 )
 
-from .model.transformer import MusicTransformer
+from .model.music_transformer import MusicTransformer
 from .generation.generator import (
     generate_sequence_from_prompt
 )

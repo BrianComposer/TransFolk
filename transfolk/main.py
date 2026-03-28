@@ -9,16 +9,16 @@ from torch.utils.data import DataLoader
 
 from transfolk_config import *
 from .model.dataset import MusicDataset
-from .model.transformer import MusicTransformer
+from .model.music_transformer import MusicTransformer
 from .training.trainer import train
 from .generation.generator import generate_sequence, generate_sequence_from_prompt
 from .utils.training_logger import save_loss_to_json
 from transfolk_tokenization.tokenizer import process_musicxml_file
 from transfolk_tokenization.decoder import tokens_to_music21_stream, tokens_to_music21_stream_with_ts
-
+from transfolk.model.model_factory import ModelFactory
 
 def run_train(
-    model: Model):
+    model_cfg: Model):
 
     # -----------------------------
     # ⏱️ INICIO
@@ -26,52 +26,72 @@ def run_train(
     start_time = datetime.now()
     start_perf = time.perf_counter()
 
-    print(f"🎼 TRAINING MODE START: {model.experiment.corpus.name}, {model.experiment.tokenizer.name}, {model.experiment.music_context.time_signature}, {model.experiment.music_context.tonality} at {start_time}")
+    print(f"🎼 TRAINING MODE START: Model: {model_cfg.name}, Architecture: {model_cfg.architecture.name} ({model_cfg.architecture.type}, Corpus: {model_cfg.experiment.corpus.name}, Tokenizer: {model_cfg.experiment.tokenizer.name}, Time Signature: {model_cfg.experiment.music_context.time_signature}, Tonality: {model_cfg.experiment.music_context.tonality}, Epochs: {model_cfg.runtime_train.epochs}, Start time: {start_time}")
 
     # load the resolver and the files
     settings = Settings()
     paths = ProjectPaths(settings.root)
     resolver = PathResolver(paths)
-    sequences_file = resolver.sequences_file(model.architecture, model.experiment)
-    vocab_file = resolver.vocab_file(model.architecture, model.experiment)
+    sequences_file = resolver.sequences_file(model_cfg.architecture, model_cfg.experiment)
+    vocab_file = resolver.vocab_file(model_cfg.architecture, model_cfg.experiment)
+    model_file = resolver.model_file(model_cfg)
+    model_cfg_json = resolver.model_cfg_file(model_cfg)
+    log_file = resolver.loss_log_file(model_cfg)
+    # ASEGURAR DIRECTORIOS EXISTEN
+    for path in [model_file, model_cfg_json, log_file]:
+        path.parent.mkdir(parents=True, exist_ok=True)
 
-    #Load the model
+    #Load the device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # Load model and log files
-    model_file = resolver.model_file(model)
-    model_json = resolver.model_cfg_file(model)
-    log_file = resolver.loss_log_file(model)
-    model.save_json(str(model_json))
+    # Save model_cfg to json
+    model_cfg.save_json(str(model_cfg_json))
     # Load vocab and sequences
     with open(sequences_file, "r") as f:
         sequences = json.load(f)
     with open(vocab_file, "r") as f:
         vocab = json.load(f)
 
-    dataset = MusicDataset(sequences, max_seq_len=model.architecture.max_seq_len, pad_token_id=0)
-    dataloader = DataLoader(dataset, batch_size=model.runtime_train.batch_size, shuffle=True)
+    dataset = MusicDataset(sequences, max_seq_len=model_cfg.architecture.max_seq_len, pad_token_id=0)
+    dataloader = DataLoader(dataset, batch_size=model_cfg.runtime_train.batch_size, shuffle=True)
 
     #####################################################################################################
-    #TO DO: en funcion del architecture, se instanciara distintos tipos de modelos de transformer
-    # if model.architecture.type=="...."
+    # Construcción del modelo desde model_cfg.architecture
     #####################################################################################################
+    model = ModelFactory.build(
+        architecture=model_cfg.architecture,
+        vocab_size=len(vocab)
+    ).to(device)
 
-    trans_model = MusicTransformer(vocab_size=len(vocab),
-                             d_model=model.architecture.d_model,
-                             nhead=model.architecture.n_heads,
-                             num_layers=model.architecture.n_layers,
-                             dim_feedforward=model.architecture.d_ff,
-                             dropout = model.architecture.dropout,
-                             max_seq_len=model.architecture.max_seq_len).to(device)
-    optimizer = torch.optim.Adam(trans_model.parameters(), lr=1e-4)
+    #####################################################################################################
+    # Optimizador y loss
+    #####################################################################################################
+    optimizer = torch.optim.Adam(
+        model.parameters(),
+        lr=model_cfg.runtime_train.learning_rate,
+        weight_decay=model_cfg.runtime_train.weight_decay
+    )# TODO: elegir el optimiser y el criterion desde el runtime_train
     criterion = torch.nn.CrossEntropyLoss(ignore_index=0)
 
-    for epoch in range(model.runtime_train.epochs):
-        loss = train(trans_model, dataloader, optimizer, criterion, len(vocab), device)
-        print(f"✅ Epoch {epoch+1} completed — Average Loss: {loss:.4f}")
+    #####################################################################################################
+    # Training loop
+    #####################################################################################################
+    for epoch in range(model_cfg.runtime_train.epochs):
+        loss = train(
+            model,
+            dataloader,
+            optimizer,
+            criterion,
+            len(vocab),
+            device
+        )
+        print(f"✅ Epoch {epoch + 1} completed — Average Loss: {loss:.4f}")
         save_loss_to_json(log_file, epoch + 1, loss)
-    torch.save(trans_model.state_dict(), model_file)
+
+    #####################################################################################################
+    # Guardado
+    #####################################################################################################
+    torch.save(model.state_dict(), model_file)
 
     # -----------------------------
     # ⏱️ FIN
@@ -83,15 +103,15 @@ def run_train(
     # -----------------------------
     # 💾 GUARDAR EN EL OBJETO
     # -----------------------------
-    model.train_start_time = start_time.isoformat()
-    model.train_end_time = end_time.isoformat()
-    model.train_total_time = total_time
-    model.train_date = start_time.date().isoformat()
-    model.vocab_file=vocab_file.name #muy importante guardar el vocal_file en el model
-    model.save_json(str(model_json))
+    model_cfg.train_start_time = start_time.isoformat()
+    model_cfg.train_end_time = end_time.isoformat()
+    model_cfg.train_total_time = total_time
+    model_cfg.train_date = start_time.date().isoformat()
+    model_cfg.vocab_file=vocab_file.name #muy importante guardar el vocal_file en el model
+    model_cfg.save_json(str(model_cfg_json))
 
     print(f"✅ MODEL TRAINING FINISHED at {end_time.isoformat()}")
-    return model
+    return model_cfg
 
 
 def run_generate(
