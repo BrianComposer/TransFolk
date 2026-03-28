@@ -4,7 +4,7 @@
 from tqdm import tqdm
 import torch
 
-def train(model, dataloader, optimizer, criterion, vocab_size, device):
+def train(model, dataloader, optimizer, criterion, vocab_size, device, scheduler=None):
     model.train()
     total_loss = 0
     total_tokens = 0
@@ -14,14 +14,26 @@ def train(model, dataloader, optimizer, criterion, vocab_size, device):
         input_seq = batch[:, :-1]
         target_seq = batch[:, 1:]
         output = model(input_seq)
+        # soporte KV cache
+        if isinstance(output, tuple):
+            output = output[0]
+
+        B, T, V = output.shape
+
         loss = criterion(
-            output.view(-1, output.size(-1)),
-            target_seq.reshape(-1)
+            output.reshape(B * T, V),
+            target_seq.reshape(B * T)
         )
-        # loss = criterion(output.view(-1, vocab_size), target_seq.reshape(-1))
+        # loss = criterion(
+        #     output.view(-1, output.size(-1)),
+        #     target_seq.reshape(-1)
+        # )
         optimizer.zero_grad()
         loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0) # 🔥 MUY recomendable en transformers
         optimizer.step()
+        if scheduler is not None:
+            scheduler.step()
         # contar tokens válidos (no padding)
         valid_tokens = (target_seq != 0).sum().item()
         total_loss += loss.item() * valid_tokens

@@ -16,6 +16,10 @@ from .utils.training_logger import save_loss_to_json
 from transfolk_tokenization.tokenizer import process_musicxml_file
 from transfolk_tokenization.decoder import tokens_to_music21_stream, tokens_to_music21_stream_with_ts
 from transfolk.model.model_factory import ModelFactory
+from transfolk.training.optimizer_factory import OptimizerFactory
+from transfolk.training.loss_factory import LossFactory
+from transfolk.training.scheduler_factory import SchedulerFactory
+
 
 def run_train(
     model_cfg: Model):
@@ -26,7 +30,7 @@ def run_train(
     start_time = datetime.now()
     start_perf = time.perf_counter()
 
-    print(f"🎼 TRAINING MODE START: Model: {model_cfg.name}, Architecture: {model_cfg.architecture.name} ({model_cfg.architecture.type}, Corpus: {model_cfg.experiment.corpus.name}, Tokenizer: {model_cfg.experiment.tokenizer.name}, Time Signature: {model_cfg.experiment.music_context.time_signature}, Tonality: {model_cfg.experiment.music_context.tonality}, Epochs: {model_cfg.runtime_train.epochs}, Start time: {start_time}")
+    print(f"🎼 TRAINING MODE START: \nModel: {model_cfg.name}, Architecture: {model_cfg.architecture.name} ({model_cfg.architecture.type}), Runtime:  ({model_cfg.runtime_train.optimizer}, {model_cfg.runtime_train.scheduler}, {model_cfg.runtime_train.loss}, Warmup: {model_cfg.runtime_train.warmup_steps}, Epochs: {model_cfg.runtime_train.epochs}), Corpus: {model_cfg.experiment.corpus.name}, Tokenizer: {model_cfg.experiment.tokenizer.name}, Time Signature: {model_cfg.experiment.music_context.time_signature}, Tonality: {model_cfg.experiment.music_context.tonality},\nStart time: {start_time}")
 
     # load the resolver and the files
     settings = Settings()
@@ -66,12 +70,24 @@ def run_train(
     #####################################################################################################
     # Optimizador y loss
     #####################################################################################################
-    optimizer = torch.optim.Adam(
-        model.parameters(),
-        lr=model_cfg.runtime_train.learning_rate,
-        weight_decay=model_cfg.runtime_train.weight_decay
-    )# TODO: elegir el optimiser y el criterion desde el runtime_train
-    criterion = torch.nn.CrossEntropyLoss(ignore_index=0)
+    optimizer = OptimizerFactory.build(model_cfg.runtime_train, model)
+    criterion = LossFactory.build(model_cfg.runtime_train)
+    # optimizer = torch.optim.Adam(
+    #     model.parameters(),
+    #     lr=model_cfg.runtime_train.learning_rate,
+    #     weight_decay=model_cfg.runtime_train.weight_decay
+    # )# TODO: elegir el optimiser y el criterion desde el runtime_train
+    # criterion = torch.nn.CrossEntropyLoss(ignore_index=0)
+
+    #####################################################################################################
+    # Scheduler
+    #####################################################################################################
+    total_steps = len(dataloader) * model_cfg.runtime_train.epochs
+    scheduler = SchedulerFactory.build(
+        model_cfg.runtime_train,
+        optimizer,
+        total_steps
+    )
 
     #####################################################################################################
     # Training loop

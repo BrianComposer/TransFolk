@@ -9,7 +9,9 @@ from transfolk_config.entities.transformer_architecture import TransformerArchit
 
 from .music_transformer import MusicTransformer
 from .music_transformer_gpt import MusicTransformerGPT
-
+from .music_transformer_rope import MusicTransformerRoPE
+from .music_transformer_gpt_kv import MusicTransformerGPT_KV
+from .music_transformer_relative import MusicTransformerRelative
 
 class ModelFactory:
     """
@@ -22,6 +24,9 @@ class ModelFactory:
     _MODEL_REGISTRY: dict[str, Type] = {
         "decoder_only": MusicTransformer,
         "decoder_only_gpt": MusicTransformerGPT,
+        "decoder_only_rope": MusicTransformerRoPE,
+        "decoder_only_gpt_kv": MusicTransformerGPT_KV,
+        "decoder_only_relative": MusicTransformerRelative
     }
 
     # --------------------------------------------------
@@ -81,6 +86,27 @@ class ModelFactory:
             })
 
         elif arch_type == "decoder_only_gpt":
+            kwargs.update({
+                "n_heads": arch.n_heads,
+                "n_layers": arch.n_layers,
+                "d_ff": arch.d_ff,
+            })
+
+        elif arch_type == "decoder_only_rope":
+            kwargs.update({
+                "n_heads": arch.n_heads,
+                "n_layers": arch.n_layers,
+                "d_ff": arch.d_ff,
+            })
+
+        elif arch_type == "decoder_only_gpt_kv":
+            kwargs.update({
+                "n_heads": arch.n_heads,
+                "n_layers": arch.n_layers,
+                "d_ff": arch.d_ff,
+            })
+
+        elif arch_type == "decoder_only_relative":
             kwargs.update({
                 "n_heads": arch.n_heads,
                 "n_layers": arch.n_layers,

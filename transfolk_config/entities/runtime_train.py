@@ -19,3 +19,5 @@ class RuntimeTrain(Serializable):
     early_stopping: Optional[int] = None
     patience: Optional[int] = None
     save_every: Optional[int] = None
+    optimizer: Optional[str] = None
+    loss: Optional[str] = None

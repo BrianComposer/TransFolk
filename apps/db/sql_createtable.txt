@@ -67,7 +67,9 @@ CREATE TABLE "runtime_train" (
     "accumulation_steps" INTEGER,
     "early_stopping" INTEGER,
     "patience" INTEGER,
-    "save_every" INTEGER
+    "save_every" INTEGER,
+    "optimizer" TEXT,
+    "loss" TEXT
 );
 
 
