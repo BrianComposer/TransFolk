@@ -1,21 +1,9 @@
-# ------------------------------
-# training/scheduler_factory.py
-# ------------------------------
-from __future__ import annotations
-
 import math
-import torch
 from torch.optim.lr_scheduler import LambdaLR
 
+#CUIDADO CON ESTO QUE HACE PETAR EL TRAINING.
 
 class SchedulerFactory:
-    """
-    Construye schedulers a partir de runtime_train.
-    Soporta:
-    - cosine (con warmup)
-    - linear (con warmup)
-    - none
-    """
 
     @staticmethod
     def build(runtime_train, optimizer, total_steps: int):
@@ -47,18 +35,22 @@ class SchedulerFactory:
             raise ValueError(f"Unsupported scheduler: {runtime_train.scheduler}")
 
     # --------------------------------------------------
-    # FUNCIONES DE LR
-    # --------------------------------------------------
 
     @staticmethod
     def _cosine_with_warmup(warmup_steps, total_steps):
         def lr_lambda(current_step):
+
+            # 🔥 clamp step
+            current_step = min(current_step, total_steps)
+
             if current_step < warmup_steps:
                 return float(current_step) / float(max(1, warmup_steps))
 
             progress = float(current_step - warmup_steps) / float(
                 max(1, total_steps - warmup_steps)
             )
+
+            progress = min(progress, 1.0)  # 🔥 CRÍTICO
 
             return 0.5 * (1.0 + math.cos(math.pi * progress))
 
@@ -67,14 +59,18 @@ class SchedulerFactory:
     @staticmethod
     def _linear_with_warmup(warmup_steps, total_steps):
         def lr_lambda(current_step):
+
+            current_step = min(current_step, total_steps)
+
             if current_step < warmup_steps:
                 return float(current_step) / float(max(1, warmup_steps))
 
-            return max(
-                0.0,
-                float(total_steps - current_step) / float(
-                    max(1, total_steps - warmup_steps)
-                )
+            progress = float(current_step - warmup_steps) / float(
+                max(1, total_steps - warmup_steps)
             )
+
+            progress = min(progress, 1.0)
+
+            return max(0.0, 1.0 - progress)
 
         return lr_lambda

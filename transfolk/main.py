@@ -21,6 +21,7 @@ from transfolk.training.loss_factory import LossFactory
 from transfolk.training.scheduler_factory import SchedulerFactory
 
 
+
 def run_train(
     model_cfg: Model):
 
@@ -72,22 +73,17 @@ def run_train(
     #####################################################################################################
     optimizer = OptimizerFactory.build(model_cfg.runtime_train, model)
     criterion = LossFactory.build(model_cfg.runtime_train)
-    # optimizer = torch.optim.Adam(
-    #     model.parameters(),
-    #     lr=model_cfg.runtime_train.learning_rate,
-    #     weight_decay=model_cfg.runtime_train.weight_decay
-    # )# TODO: elegir el optimiser y el criterion desde el runtime_train
-    # criterion = torch.nn.CrossEntropyLoss(ignore_index=0)
+
 
     #####################################################################################################
-    # Scheduler
+    # Scheduler PARA EL FUTURO
     #####################################################################################################
-    total_steps = len(dataloader) * model_cfg.runtime_train.epochs
-    scheduler = SchedulerFactory.build(
-        model_cfg.runtime_train,
-        optimizer,
-        total_steps
-    )
+    # total_steps = len(dataloader) * model_cfg.runtime_train.epochs
+    # scheduler = SchedulerFactory.build(
+    #     model_cfg.runtime_train,
+    #     optimizer,
+    #     total_steps
+    # )
 
     #####################################################################################################
     # Training loop
@@ -101,7 +97,7 @@ def run_train(
             len(vocab),
             device
         )
-        print(f"✅ Epoch {epoch + 1} completed — Average Loss: {loss:.4f}")
+        print(f"\n✅ Epoch {epoch + 1} completed — Average Loss: {loss:.4f}\n")
         save_loss_to_json(log_file, epoch + 1, loss)
 
     #####################################################################################################
@@ -131,40 +127,38 @@ def run_train(
 
 
 def run_generate(
-        model_cng: Model,
+        model_cfg: Model,
         runtime: RuntimeGenerate):
 
-    print(f"🎶 GENERATION MODE: {model_cng.name}, {model_cng.experiment.corpus.name}, {model_cng.experiment.tokenizer.name}, {model_cng.experiment.music_context.time_signature}, {model_cng.experiment.music_context.tonality}, {runtime.temperature}")
+    print(f"🎶 GENERATION MODE: {model_cfg.name}, {model_cfg.experiment.corpus.name}, {model_cfg.experiment.tokenizer.name}, {model_cfg.experiment.music_context.time_signature}, {model_cfg.experiment.music_context.tonality}, {runtime.temperature}")
 
     # load the resolver and the files
     settings = Settings()
     paths = ProjectPaths(settings.root)
     resolver = PathResolver(paths)
-    vocab_file = resolver.vocab_file(model_cng.architecture, model_cng.experiment)
-    model_file = resolver.model_file(model_cng)
-    prod_dir = resolver.production_dir(model_cng, runtime)
-
+    vocab_file = resolver.vocab_file(model_cfg.architecture, model_cfg.experiment)
+    model_file = resolver.model_file(model_cfg)
+    prod_dir = resolver.production_dir(model_cfg, runtime)
 
     with open(vocab_file, "r") as f:
         vocab = json.load(f)
     inv_vocab = {v: k for k, v in vocab.items()}
 
-
+    #####################################################################################################
+    # Construcción del modelo desde model_cfg.architecture
+    #####################################################################################################
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    trans_model = MusicTransformer(vocab_size=len(vocab),
-                             d_model=model_cng.architecture.d_model,
-                             nhead=model_cng.architecture.n_heads,
-                             num_layers=model_cng.architecture.n_layers,
-                             dim_feedforward=model_cng.architecture.d_ff,
-                             dropout=model_cng.architecture.dropout,
-                             max_seq_len=model_cng.architecture.max_seq_len).to(device)
-    trans_model.load_state_dict(torch.load(model_file, map_location=device))
+    model = ModelFactory.build(
+        architecture=model_cfg.architecture,
+        vocab_size=len(vocab)
+    ).to(device)
+    model.load_state_dict(torch.load(model_file, map_location=device))
 
     for i in range(runtime.num_productions):
         try:
             start_token_id = vocab["START"]
             generated_tokens = generate_sequence(
-                model=trans_model,
+                model=model,
                 start_token_id=start_token_id,
                 max_len=runtime.max_len,
                 vocab=vocab,
@@ -180,11 +174,11 @@ def run_generate(
 
             # Crear carpeta "productions" si no existe
             os.makedirs(prod_dir, exist_ok=True)
-            filepath = resolver.generated_new_file(model_cng, runtime)
+            filepath = resolver.generated_new_file(model_cfg, runtime)
 
             # Guardar el archivo
             music_stream = tokens_to_music21_stream(generated_tokens,
-                                                    model_cng.experiment.allowed_durations.durations
+                                                    model_cfg.experiment.allowed_durations.durations
                                                     )
             music_stream.write("musicxml", fp=filepath)
             print(f"✅ Archivo generado: {filepath}")
@@ -193,7 +187,7 @@ def run_generate(
 
 
 def run_generate_from_musicxml_prompt(
-        model_cng: Model,
+        model_cfg: Model,
         runtime: RuntimeGenerate,
         file_xml_prompt_path:str):
     # 1. Leer el archivo XML y tokenizarlo
@@ -201,10 +195,10 @@ def run_generate_from_musicxml_prompt(
     prompt_tokens = []
     #tokenizacion del promp xml
     prompt_tokens = process_musicxml_file(file_xml_prompt_path,
-                                          model_cng.experiment.tokenizer.name,
-                                          model_cng.experiment.music_context.time_signature,
-                                          model_cng.experiment.music_context.tonality,
-                                          model_cng.experiment.allowed_durations.durations,
+                                          model_cfg.experiment.tokenizer.name,
+                                          model_cfg.experiment.music_context.time_signature,
+                                          model_cfg.experiment.music_context.tonality,
+                                          model_cfg.experiment.allowed_durations.durations,
                                           errors)
 
     if not prompt_tokens:
@@ -214,9 +208,9 @@ def run_generate_from_musicxml_prompt(
     settings = Settings()
     paths = ProjectPaths(settings.root)
     resolver = PathResolver(paths)
-    vocab_file = resolver.vocab_file(model_cng.architecture, model_cng.experiment)
-    model_file = resolver.model_file(model_cng)
-    prod_dir = resolver.production_dir(model_cng, runtime)
+    vocab_file = resolver.vocab_file(model_cfg.architecture, model_cfg.experiment)
+    model_file = resolver.model_file(model_cfg)
+    prod_dir = resolver.production_dir(model_cfg, runtime)
 
     # 2. Cargar vocabulario
     with open(vocab_file, "r") as f:
@@ -234,12 +228,12 @@ def run_generate_from_musicxml_prompt(
     # 4. Cargamos el modelo
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     trans_model = MusicTransformer(vocab_size=len(vocab),
-                                   d_model=model_cng.architecture.d_model,
-                                   nhead=model_cng.architecture.n_heads,
-                                   num_layers=model_cng.architecture.n_layers,
-                                   dim_feedforward=model_cng.architecture.d_ff,
-                                   dropout=model_cng.architecture.dropout,
-                                   max_seq_len=2*model_cng.architecture.max_seq_len).to(device)
+                                   d_model=model_cfg.architecture.d_model,
+                                   nhead=model_cfg.architecture.n_heads,
+                                   num_layers=model_cfg.architecture.n_layers,
+                                   dim_feedforward=model_cfg.architecture.d_ff,
+                                   dropout=model_cfg.architecture.dropout,
+                                   max_seq_len=2 * model_cfg.architecture.max_seq_len).to(device)
     trans_model.load_state_dict(torch.load(model_file, map_location=device))
 
 
@@ -264,11 +258,11 @@ def run_generate_from_musicxml_prompt(
 
         # Crear carpeta "productions" si no existe
         os.makedirs(prod_dir, exist_ok=True)
-        filepath = resolver.generated_new_file(model_cng, runtime)
+        filepath = resolver.generated_new_file(model_cfg, runtime)
 
         # Guardar el archivo
         music_stream = tokens_to_music21_stream(generated_tokens,
-                                                model_cng.experiment.allowed_durations.durations
+                                                model_cfg.experiment.allowed_durations.durations
                                                 )
         music_stream.write("musicxml", fp=filepath)
         print(f"✅ Archivo generado: {filepath}")
@@ -278,7 +272,7 @@ def run_generate_from_musicxml_prompt(
 
 
 def run_generate_from_TS_tonality(
-        model_cng: Model,
+        model_cfg: Model,
         runtime: RuntimeGenerate,
         time_signature="2/4",
         tonality="major"):
@@ -299,9 +293,9 @@ def run_generate_from_TS_tonality(
     settings = Settings()
     paths = ProjectPaths(settings.root)
     resolver = PathResolver(paths)
-    vocab_file = resolver.vocab_file(model_cng.architecture, model_cng.experiment)
-    model_file = resolver.model_file(model_cng)
-    prod_dir = resolver.production_dir(model_cng, runtime)
+    vocab_file = resolver.vocab_file(model_cfg.architecture, model_cfg.experiment)
+    model_file = resolver.model_file(model_cfg)
+    prod_dir = resolver.production_dir(model_cfg, runtime)
 
     # 2. Cargar vocabulario
     with open(vocab_file, "r") as f:
@@ -319,12 +313,12 @@ def run_generate_from_TS_tonality(
     # 4. Cargamos el modelo
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     trans_model = MusicTransformer(vocab_size=len(vocab),
-                                   d_model=model_cng.architecture.d_model,
-                                   nhead=model_cng.architecture.n_heads,
-                                   num_layers=model_cng.architecture.n_layers,
-                                   dim_feedforward=model_cng.architecture.d_ff,
-                                   dropout=model_cng.architecture.dropout,
-                                   max_seq_len=2*model_cng.architecture.max_seq_len).to(device)
+                                   d_model=model_cfg.architecture.d_model,
+                                   nhead=model_cfg.architecture.n_heads,
+                                   num_layers=model_cfg.architecture.n_layers,
+                                   dim_feedforward=model_cfg.architecture.d_ff,
+                                   dropout=model_cfg.architecture.dropout,
+                                   max_seq_len=2 * model_cfg.architecture.max_seq_len).to(device)
     trans_model.load_state_dict(torch.load(model_file, map_location=device))
 
 
@@ -349,11 +343,11 @@ def run_generate_from_TS_tonality(
 
         # Crear carpeta "productions" si no existe
         os.makedirs(prod_dir, exist_ok=True)
-        filepath = resolver.generated_new_file(model_cng, runtime)
+        filepath = resolver.generated_new_file(model_cfg, runtime)
 
         # Guardar el archivo
         music_stream = tokens_to_music21_stream(generated_tokens,
-                                                model_cng.experiment.allowed_durations.durations
+                                                model_cfg.experiment.allowed_durations.durations
                                                 )
         music_stream.write("musicxml", fp=filepath)
         print(f"✅ Archivo generado: {filepath}")

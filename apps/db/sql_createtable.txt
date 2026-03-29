@@ -76,6 +76,7 @@ CREATE TABLE "runtime_train" (
 CREATE TABLE "transformer_architecture" (
     "id" INTEGER PRIMARY KEY AUTOINCREMENT,
     "name" TEXT NOT NULL UNIQUE,
+    "description" TEXT,
 
     "type" TEXT,
     "d_model" INTEGER,
@@ -99,7 +100,6 @@ CREATE TABLE "transformer_architecture" (
     "encoder_layers" INTEGER,
     "decoder_layers" INTEGER
 );
-
 
 
 CREATE TABLE "runtime_generate" (

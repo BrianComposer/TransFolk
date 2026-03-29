@@ -9,6 +9,7 @@ class TransformerArchitecture(Serializable):
     name: str
 
     type: Optional[str] = None
+    description: Optional[str] = None
     d_model: Optional[int] = None
     n_heads: Optional[int] = None
     n_layers: Optional[int] = None

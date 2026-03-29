@@ -10,7 +10,7 @@ from .generation.generator import (
     generate_sequence_from_prompt
 )
 from transfolk_tokenization.decoder import tokens_to_music21_stream
-
+from .model.model_factory import ModelFactory
 
 class TransFolkPipeline:
 
@@ -54,15 +54,19 @@ class TransFolkPipeline:
         if not all([self.algorithm, self.time_signature, self.mode]):
             raise RuntimeError("Model experiment metadata is incomplete")
 
-        self.model = MusicTransformer(
-            vocab_size=len(self.vocab),
-            d_model=model_config.architecture.d_model,
-            nhead=model_config.architecture.n_heads,
-            num_layers=model_config.architecture.n_layers,
-            dim_feedforward=model_config.architecture.d_ff,
-            dropout=model_config.architecture.dropout,
-            max_seq_len=model_config.architecture.max_seq_len
-        ).to(self.device)
+        self.model = ModelFactory.build(
+            architecture=model_config.architecture,
+            vocab_size=len(self.vocab)
+        ).to(device)
+        # self.model = MusicTransformer(
+        #     vocab_size=len(self.vocab),
+        #     d_model=model_config.architecture.d_model,
+        #     nhead=model_config.architecture.n_heads,
+        #     num_layers=model_config.architecture.n_layers,
+        #     dim_feedforward=model_config.architecture.d_ff,
+        #     dropout=model_config.architecture.dropout,
+        #     max_seq_len=model_config.architecture.max_seq_len
+        # ).to(self.device)
 
         self.model.load_state_dict(
             torch.load(model_file, map_location=self.device)
@@ -172,9 +176,15 @@ class TransFolkPipeline:
                                   ):
         # 1. Generar tokens iniciales
         prompt_tokens = []
-        prompt_tokens.append(f"TS_{time_signature}")
-        prompt_tokens.append(f"MODE_{tonality.lower()}")
-        prompt_tokens.append(f"BAR")
+        # 1. Generar tokens iniciales
+        for t in [f"TS_{time_signature}", f"MODE_{tonality.lower()}", "BAR"]:
+            if t in self.vocab:
+                prompt_tokens.append(t)
+            else:
+                print(f"Token not in vocabulary: {t}")
+        # prompt_tokens.append(f"TS_{time_signature}")
+        # prompt_tokens.append(f"MODE_{tonality.lower()}")
+        # prompt_tokens.append(f"BAR")
 
         # 3. Convertir tokens del prompt a IDs
         try:
