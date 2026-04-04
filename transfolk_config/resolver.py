@@ -141,6 +141,21 @@ class PathResolver:
 
         return self.train_dir(model.architecture, model.experiment) / f"{filename}.pt"
 
+    def model_file_epoch(self, model: Model, epoch:int) -> Path:
+        ts = self._safe(model.experiment.music_context.time_signature)
+        ton = self._safe(model.experiment.music_context.tonality)
+
+        filename = (
+            f"{model.architecture.name}_"
+            f"{model.experiment.corpus.name}_"
+            f"{model.experiment.tokenizer.name}_"
+            f"{ton}_"
+            f"{ts}_"
+            f"epoch{epoch}"
+        )
+
+        return self.train_dir(model.architecture, model.experiment) / f"{filename}.pt"
+
     def model_cfg_file(self, model: Model) -> Path:
         ts = self._safe(model.experiment.music_context.time_signature)
         ton = self._safe(model.experiment.music_context.tonality)
@@ -151,6 +166,21 @@ class PathResolver:
             f"{model.experiment.tokenizer.name}_"
             f"{ton}_"
             f"{ts}"
+        )
+
+        return self.train_dir(model.architecture, model.experiment) / f"{filename}.json"
+
+    def model_epoch_cfg_file(self, model: Model, epoch:int) -> Path:
+        ts = self._safe(model.experiment.music_context.time_signature)
+        ton = self._safe(model.experiment.music_context.tonality)
+
+        filename = (
+            f"{model.architecture.name}_"
+            f"{model.experiment.corpus.name}_"
+            f"{model.experiment.tokenizer.name}_"
+            f"{ton}_"
+            f"{ts}_"
+            f"epoch{epoch}"
         )
 
         return self.train_dir(model.architecture, model.experiment) / f"{filename}.json"

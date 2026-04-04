@@ -23,7 +23,8 @@ from .model.architecture_test import test_architecture
 
 
 def run_train(
-    model_cfg: Model):
+    model_cfg: Model,
+    save_each_epoch=False):
 
     # -----------------------------
     # ⏱️ INICIO
@@ -90,15 +91,29 @@ def run_train(
     #####################################################################################################
     for epoch in range(model_cfg.runtime_train.epochs):
         loss = train(
-            model,
-            dataloader,
-            optimizer,
-            criterion,
-            len(vocab),
-            device
+            model=model,
+            dataloader=dataloader,
+            optimizer=optimizer,
+            criterion=criterion,
+            device=device,
+            scheduler=None,
+            pad_token_id=0,
+            grad_clip=1.0
         )
         print(f"\n✅ Epoch {epoch + 1} completed — Average Loss: {loss:.4f}\n")
         save_loss_to_json(log_file, epoch + 1, loss)
+        # Guardado de seguridad en cada epoch
+        if save_each_epoch:
+            torch.save(model.state_dict(), resolver.model_file_epoch(model_cfg, epoch))
+            end_time = datetime.now()
+            end_perf = time.perf_counter()
+            total_time = end_perf - start_perf
+            model_cfg.train_start_time = start_time.isoformat()
+            model_cfg.train_end_time = end_time.isoformat()
+            model_cfg.train_total_time = total_time
+            model_cfg.train_date = start_time.date().isoformat()
+            model_cfg.vocab_file = vocab_file.name  # muy importante guardar el vocal_file en el model
+            model_cfg.save_json(str(resolver.model_cfg_file(model_cfg, epoch)))
 
     #####################################################################################################
     # Guardado
