@@ -18,7 +18,7 @@ if __name__ == "__main__":
     # mc = registry.find_by_name("major_x")
     # adt = registry.find_by_name("corpus_cleaning")
     #exp = Experiment(id=1, name = "prueba", corpus=corpus, tokenizer=tk, music_context=mc, allowed_durations=adt)
-    exp = registry.find_by_name("todos_patterns_x_x")
+    exp = registry.find_by_name("todos_momet_x_x")
 
     settings = Settings()
     paths = ProjectPaths(settings.root)

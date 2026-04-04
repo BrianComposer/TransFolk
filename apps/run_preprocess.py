@@ -10,7 +10,7 @@ if __name__ == "__main__":
 
     registry = ConfigRegistry()
     registry.load_all()
-    corpus = registry.find_by_name("altoaragon")
+    corpus = registry.find_by_name("todos")
     adc=registry.find_by_name("corpus_cleaning")
 
     data_dir_raw = resolver.data_raw(corpus)
