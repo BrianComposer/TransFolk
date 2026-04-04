@@ -19,7 +19,7 @@ from transfolk.model.model_factory import ModelFactory
 from transfolk.training.optimizer_factory import OptimizerFactory
 from transfolk.training.loss_factory import LossFactory
 from transfolk.training.scheduler_factory import SchedulerFactory
-
+from .model.architecture_test import test_architecture
 
 
 def run_train(
@@ -124,6 +124,127 @@ def run_train(
 
     print(f"✅ MODEL TRAINING FINISHED at {end_time.isoformat()}")
     return model_cfg
+
+
+def run_test_architecture(model_cfg: Model):
+
+    # -----------------------------
+    # ⏱️ INICIO
+    # -----------------------------
+    start_time = datetime.now()
+    start_perf = time.perf_counter()
+
+    print(
+        f"🧪 ARCHITECTURE TEST START:\n"
+        f"Model: {model_cfg.name}, "
+        f"Architecture: {model_cfg.architecture.name} ({model_cfg.architecture.type}), "
+        f"Runtime: ({model_cfg.runtime_train.optimizer}, {model_cfg.runtime_train.scheduler}, {model_cfg.runtime_train.loss}),\n"
+        f"Corpus: {model_cfg.experiment.corpus.name}, "
+        f"Tokenizer: {model_cfg.experiment.tokenizer.name}\n"
+        f"Start time: {start_time}\n"
+    )
+
+    # -----------------------------
+    # PATHS / RESOLVER
+    # -----------------------------
+    settings = Settings()
+    paths = ProjectPaths(settings.root)
+    resolver = PathResolver(paths)
+
+    sequences_file = resolver.sequences_file(model_cfg.architecture, model_cfg.experiment)
+    vocab_file = resolver.vocab_file(model_cfg.architecture, model_cfg.experiment)
+
+    # -----------------------------
+    # DEVICE
+    # -----------------------------
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # -----------------------------
+    # LOAD DATA
+    # -----------------------------
+    with open(sequences_file, "r") as f:
+        sequences = json.load(f)
+
+    with open(vocab_file, "r") as f:
+        vocab = json.load(f)
+
+    dataset = MusicDataset(
+        sequences,
+        max_seq_len=model_cfg.architecture.max_seq_len,
+        pad_token_id=0
+    )
+
+    dataloader = DataLoader(
+        dataset,
+        batch_size=model_cfg.runtime_train.batch_size,
+        shuffle=True
+    )
+
+    # -----------------------------
+    # BUILD MODEL
+    # -----------------------------
+    model = ModelFactory.build(
+        architecture=model_cfg.architecture,
+        vocab_size=len(vocab)
+    ).to(device)
+
+    # -----------------------------
+    # OPTIMIZER / LOSS
+    # -----------------------------
+    optimizer = OptimizerFactory.build(model_cfg.runtime_train, model)
+    criterion = LossFactory.build(model_cfg.runtime_train)
+
+
+    results = test_architecture(
+        model=model,
+        dataloader=dataloader,
+        optimizer=optimizer,
+        criterion=criterion,
+        device=device,
+        vocab_size=len(vocab),
+        max_batches_overfit=10,
+        pad_token_id=0,
+        verbose=True,
+    )
+
+    # -----------------------------
+    # ⏱️ FIN
+    # -----------------------------
+    end_time = datetime.now()
+    end_perf = time.perf_counter()
+    total_time = end_perf - start_perf
+
+    print(f"\n🧪 TEST FINISHED at {end_time.isoformat()}")
+    print(f"⏱️ Total test time: {total_time:.2f} seconds\n")
+
+    # -----------------------------
+    # 📊 VALIDACIÓN AUTOMÁTICA (CRÍTICA)
+    # -----------------------------
+    padding_ok = results.get("padding_diff", 1.0) < 1e-3
+    causal_ok = results.get("causal_diff", 1.0) < 1e-3
+    overfit_ok = results.get("overfit_final_loss", 999) < results.get("overfit_initial_loss", 0)
+
+    print("===== VALIDATION =====")
+    print(f"Padding mask OK: {padding_ok}")
+    print(f"Causal mask OK:  {causal_ok}")
+    print(f"Overfit OK:      {overfit_ok}")
+    print("======================\n")
+
+    # -----------------------------
+    # ❌ HARD FAIL (opcional pero recomendable)
+    # -----------------------------
+    if not padding_ok:
+        raise RuntimeError("❌ Padding mask incorrecta")
+
+    if not causal_ok:
+        raise RuntimeError("❌ Causal mask incorrecta")
+
+    if not overfit_ok:
+        raise RuntimeError("❌ Modelo no aprende (overfit test fallido)")
+
+    return results
+
+
 
 
 def run_generate(
