@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 
-os.environ["TRANSFOLK"] = r"\workspace\TransFolk"
+#os.environ["TRANSFOLK"] = r"D:\BackUpDrive\Programacion\Python\TransFolk"
 
 
 class Settings:
