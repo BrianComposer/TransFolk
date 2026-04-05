@@ -14,7 +14,7 @@ class Settings:
         elif os.environ.get("TRANSFOLK"):
             self.root = Path(os.environ.get("TRANSFOLK")).resolve()
         else:
-            self.root = Path(Path.cwd()).resolve().parent
+            self.root = Path(Path.cwd()).resolve()
 
         print("DEBUG SETTINGS ROOT =", self.root)
         print("DEBUG ENV TRANSFOLK =", os.environ.get("TRANSFOLK"))
