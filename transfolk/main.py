@@ -48,10 +48,10 @@ def run_train(
     for path in [model_file, model_cfg_json, log_file]:
         path.parent.mkdir(parents=True, exist_ok=True)
 
-    # print("DEBUG sequences_file repr =", repr(str(sequences_file)))
-    # print("DEBUG exists =", Path(str(sequences_file)).exists())
-    # print("DEBUG is_file =", Path(str(sequences_file)).is_file())
-    # print("DEBUG parts =", sequences_file.parts if hasattr(sequences_file, "parts") else "no_parts")
+    print("DEBUG sequences_file repr =", repr(str(sequences_file)))
+    print("DEBUG exists =", Path(str(sequences_file)).exists())
+    print("DEBUG is_file =", Path(str(sequences_file)).is_file())
+    print("DEBUG parts =", sequences_file.parts if hasattr(sequences_file, "parts") else "no_parts")
     #
     # literal = Path("/workspace/TransFolk/models/training/mick004/todos/momet/sequences_todos_momet_x_x.json")
     # built = Path(str(sequences_file))
@@ -78,25 +78,25 @@ def run_train(
     # print("DEBUG ts       =", ascii(ts), len(ts))
     # print("DEBUG tonality =", ascii(tonality), len(tonality))
 
-    literal = "/workspace/TransFolk/models/training/mick004/todos/momet/sequences_todos_momet_x_x.json"
-    built = str(sequences_file)
-
-    print("literal == built:", literal == built)
-    print("literal len:", len(literal))
-    print("built   len:", len(built))
-
-    for i, (a, b) in enumerate(zip(literal, built)):
-        if a != b:
-            print("FIRST DIFF AT", i, "literal:", repr(a), ord(a), "built:", repr(b), ord(b))
-            break
-    else:
-        if len(literal) != len(built):
-            print("No diff in shared prefix, different lengths")
-        else:
-            print("No visible diff found in zip()")
-
-    print("literal chars:", [ord(c) for c in literal])
-    print("built   chars:", [ord(c) for c in built])
+    # literal = "/workspace/TransFolk/models/training/mick004/todos/momet/sequences_todos_momet_x_x.json"
+    # built = str(sequences_file)
+    #
+    # print("literal == built:", literal == built)
+    # print("literal len:", len(literal))
+    # print("built   len:", len(built))
+    #
+    # for i, (a, b) in enumerate(zip(literal, built)):
+    #     if a != b:
+    #         print("FIRST DIFF AT", i, "literal:", repr(a), ord(a), "built:", repr(b), ord(b))
+    #         break
+    # else:
+    #     if len(literal) != len(built):
+    #         print("No diff in shared prefix, different lengths")
+    #     else:
+    #         print("No visible diff found in zip()")
+    #
+    # print("literal chars:", [ord(c) for c in literal])
+    # print("built   chars:", [ord(c) for c in built])
 
 
 
