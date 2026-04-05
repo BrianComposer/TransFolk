@@ -25,7 +25,8 @@ from transfolk_config.settings import Settings
 
 def run_train(
     model_cfg: Model,
-    save_each_epoch=False):
+    root_path: str = None,
+    save_each_epoch = False):
 
     # -----------------------------
     # ⏱️ INICIO
@@ -36,7 +37,7 @@ def run_train(
     print(f"🎼 TRAINING MODE START: \nModel: {model_cfg.name}, Architecture: {model_cfg.architecture.name} ({model_cfg.architecture.type}, d_model:{model_cfg.architecture.d_model}, n_heads:{model_cfg.architecture.n_heads}, n_layers:{model_cfg.architecture.n_layers}), Runtime:  ({model_cfg.runtime_train.optimizer}, {model_cfg.runtime_train.scheduler}, {model_cfg.runtime_train.loss}, Warmup: {model_cfg.runtime_train.warmup_steps}, Epochs: {model_cfg.runtime_train.epochs}), Corpus: {model_cfg.experiment.corpus.name}, Tokenizer: {model_cfg.experiment.tokenizer.name}, Time Signature: {model_cfg.experiment.music_context.time_signature}, Tonality: {model_cfg.experiment.music_context.tonality},\nStart time: {start_time}")
 
     # load the resolver and the files
-    settings = Settings("")
+    settings = Settings(root_path)
     paths = ProjectPaths(settings.root)
     resolver = PathResolver(paths)
     sequences_file = resolver.sequences_file(model_cfg.architecture, model_cfg.experiment)
@@ -48,10 +49,10 @@ def run_train(
     for path in [model_file, model_cfg_json, log_file]:
         path.parent.mkdir(parents=True, exist_ok=True)
 
-    print("DEBUG sequences_file repr =", repr(str(sequences_file)))
-    print("DEBUG exists =", Path(str(sequences_file)).exists())
-    print("DEBUG is_file =", Path(str(sequences_file)).is_file())
-    print("DEBUG parts =", sequences_file.parts if hasattr(sequences_file, "parts") else "no_parts")
+    # print("DEBUG sequences_file repr =", repr(str(sequences_file)))
+    # print("DEBUG exists =", Path(str(sequences_file)).exists())
+    # print("DEBUG is_file =", Path(str(sequences_file)).is_file())
+    # print("DEBUG parts =", sequences_file.parts if hasattr(sequences_file, "parts") else "no_parts")
     #
     # literal = Path("/workspace/TransFolk/models/training/mick004/todos/momet/sequences_todos_momet_x_x.json")
     # built = Path(str(sequences_file))
