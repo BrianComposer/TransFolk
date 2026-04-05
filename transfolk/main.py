@@ -78,6 +78,27 @@ def run_train(
     print("DEBUG ts       =", ascii(ts), len(ts))
     print("DEBUG tonality =", ascii(tonality), len(tonality))
 
+    literal = "/workspace/TransFolk/models/training/mick004/todos/momet/sequences_todos_momet_x_x.json"
+    built = str(sequences_file)
+
+    print("literal == built:", literal == built)
+    print("literal len:", len(literal))
+    print("built   len:", len(built))
+
+    for i, (a, b) in enumerate(zip(literal, built)):
+        if a != b:
+            print("FIRST DIFF AT", i, "literal:", repr(a), ord(a), "built:", repr(b), ord(b))
+            break
+    else:
+        if len(literal) != len(built):
+            print("No diff in shared prefix, different lengths")
+        else:
+            print("No visible diff found in zip()")
+
+    print("literal chars:", [ord(c) for c in literal])
+    print("built   chars:", [ord(c) for c in built])
+
+
 
     #Load the device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
