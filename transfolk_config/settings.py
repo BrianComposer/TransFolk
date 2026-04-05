@@ -10,8 +10,8 @@ class Settings:
     def __init__(self, root=None):
         self.root=""
         if root:
-            if root == "/":
-                self.root = Path(Path.cwd()).resolve() #Truco para que se pueda ejecutar en runpod con python -m apps.run_train "/"
+            if root == ".":
+                self.root = Path(Path.cwd()).resolve() #Truco para que se pueda ejecutar en runpod con python -m apps.run_train "."
                 print("RUNPOD SETTINGS ROOT =", self.root)
             else:
                 self.root = Path(root).resolve()
