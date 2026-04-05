@@ -49,58 +49,6 @@ def run_train(
     for path in [model_file, model_cfg_json, log_file]:
         path.parent.mkdir(parents=True, exist_ok=True)
 
-    # print("DEBUG sequences_file repr =", repr(str(sequences_file)))
-    # print("DEBUG exists =", Path(str(sequences_file)).exists())
-    # print("DEBUG is_file =", Path(str(sequences_file)).is_file())
-    # print("DEBUG parts =", sequences_file.parts if hasattr(sequences_file, "parts") else "no_parts")
-    #
-    # literal = Path("/workspace/TransFolk/models/training/mick004/todos/momet/sequences_todos_momet_x_x.json")
-    # built = Path(str(sequences_file))
-    #
-    # print("DEBUG literal repr =", ascii(str(literal)))
-    # print("DEBUG built   repr =", ascii(str(built)))
-    # print("DEBUG literal exists =", literal.exists())
-    # print("DEBUG built   exists =", built.exists())
-    # print("DEBUG equal strings =", str(literal) == str(built))
-    # print("DEBUG literal len =", len(str(literal)))
-    # print("DEBUG built   len =", len(str(built)))
-    # print("DEBUG literal bytes =", str(literal).encode("unicode_escape"))
-    # print("DEBUG built   bytes =", str(built).encode("unicode_escape"))
-    #
-    # arch = model_cfg.architecture.name
-    # corpus = model_cfg.experiment.corpus.name
-    # tokenizer = model_cfg.experiment.tokenizer_algorithm.name
-    # ts = model_cfg.experiment.music_context.time_signature
-    # tonality = model_cfg.experiment.music_context.tonality
-    #
-    # print("DEBUG arch     =", ascii(arch), len(arch))
-    # print("DEBUG corpus   =", ascii(corpus), len(corpus))
-    # print("DEBUG tokenizer=", ascii(tokenizer), len(tokenizer))
-    # print("DEBUG ts       =", ascii(ts), len(ts))
-    # print("DEBUG tonality =", ascii(tonality), len(tonality))
-
-    # literal = "/workspace/TransFolk/models/training/mick004/todos/momet/sequences_todos_momet_x_x.json"
-    # built = str(sequences_file)
-    #
-    # print("literal == built:", literal == built)
-    # print("literal len:", len(literal))
-    # print("built   len:", len(built))
-    #
-    # for i, (a, b) in enumerate(zip(literal, built)):
-    #     if a != b:
-    #         print("FIRST DIFF AT", i, "literal:", repr(a), ord(a), "built:", repr(b), ord(b))
-    #         break
-    # else:
-    #     if len(literal) != len(built):
-    #         print("No diff in shared prefix, different lengths")
-    #     else:
-    #         print("No visible diff found in zip()")
-    #
-    # print("literal chars:", [ord(c) for c in literal])
-    # print("built   chars:", [ord(c) for c in built])
-
-
-
     #Load the device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

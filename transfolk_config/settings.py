@@ -10,14 +10,16 @@ class Settings:
     def __init__(self, root=None):
         self.root=""
         if root:
-            self.root = Path(root).resolve()
+            if root == "/":
+                self.root = Path(Path.cwd()).resolve() #Truco para que se pueda ejecutar en runpod con python -m apps.run_train "/"
+                print("RUNPOD SETTINGS ROOT =", self.root)
+            else:
+                self.root = Path(root).resolve()
         elif os.environ.get("TRANSFOLK"):
             self.root = Path(os.environ.get("TRANSFOLK")).resolve()
         else:
-            self.root = Path(Path.cwd()).resolve()
+            self.root = Path(Path.cwd()).resolve().parent
 
-        print("DEBUG SETTINGS ROOT =", self.root)
-        print("DEBUG ENV TRANSFOLK =", os.environ.get("TRANSFOLK"))
 
 
 
