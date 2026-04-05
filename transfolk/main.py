@@ -20,7 +20,7 @@ from transfolk.training.optimizer_factory import OptimizerFactory
 from transfolk.training.loss_factory import LossFactory
 from transfolk.training.scheduler_factory import SchedulerFactory
 from .model.architecture_test import test_architecture
-
+from pathlib import Path
 
 def run_train(
     model_cfg: Model,
@@ -33,6 +33,15 @@ def run_train(
     start_perf = time.perf_counter()
 
     print(f"🎼 TRAINING MODE START: \nModel: {model_cfg.name}, Architecture: {model_cfg.architecture.name} ({model_cfg.architecture.type}, d_model:{model_cfg.architecture.d_model}, n_heads:{model_cfg.architecture.n_heads}, n_layers:{model_cfg.architecture.n_layers}), Runtime:  ({model_cfg.runtime_train.optimizer}, {model_cfg.runtime_train.scheduler}, {model_cfg.runtime_train.loss}, Warmup: {model_cfg.runtime_train.warmup_steps}, Epochs: {model_cfg.runtime_train.epochs}), Corpus: {model_cfg.experiment.corpus.name}, Tokenizer: {model_cfg.experiment.tokenizer.name}, Time Signature: {model_cfg.experiment.music_context.time_signature}, Tonality: {model_cfg.experiment.music_context.tonality},\nStart time: {start_time}")
+
+
+
+    print("DEBUG settings.root =", settings.root)
+    print("DEBUG settings.root.parent =", settings.root.parent)
+    print("DEBUG sequences_file =", sequences_file)
+    print("DEBUG exists =", Path(sequences_file).exists())
+
+
 
     # load the resolver and the files
     settings = Settings()
