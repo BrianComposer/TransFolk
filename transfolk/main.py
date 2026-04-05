@@ -32,7 +32,7 @@ def run_train(
     start_time = datetime.now()
     start_perf = time.perf_counter()
 
-    print(f"🎼 TRAINING MODE START: \nModel: {model_cfg.name}, Architecture: {model_cfg.architecture.name} ({model_cfg.architecture.type}), Runtime:  ({model_cfg.runtime_train.optimizer}, {model_cfg.runtime_train.scheduler}, {model_cfg.runtime_train.loss}, Warmup: {model_cfg.runtime_train.warmup_steps}, Epochs: {model_cfg.runtime_train.epochs}), Corpus: {model_cfg.experiment.corpus.name}, Tokenizer: {model_cfg.experiment.tokenizer.name}, Time Signature: {model_cfg.experiment.music_context.time_signature}, Tonality: {model_cfg.experiment.music_context.tonality},\nStart time: {start_time}")
+    print(f"🎼 TRAINING MODE START: \nModel: {model_cfg.name}, Architecture: {model_cfg.architecture.name} ({model_cfg.architecture.type}, d_model:{model_cfg.architecture.d_model}, n_heads:{model_cfg.architecture.n_heads}, n_layers:{model_cfg.architecture.n_layers}), Runtime:  ({model_cfg.runtime_train.optimizer}, {model_cfg.runtime_train.scheduler}, {model_cfg.runtime_train.loss}, Warmup: {model_cfg.runtime_train.warmup_steps}, Epochs: {model_cfg.runtime_train.epochs}), Corpus: {model_cfg.experiment.corpus.name}, Tokenizer: {model_cfg.experiment.tokenizer.name}, Time Signature: {model_cfg.experiment.music_context.time_signature}, Tonality: {model_cfg.experiment.music_context.tonality},\nStart time: {start_time}")
 
     # load the resolver and the files
     settings = Settings()
@@ -113,7 +113,7 @@ def run_train(
             model_cfg.train_total_time = total_time
             model_cfg.train_date = start_time.date().isoformat()
             model_cfg.vocab_file = vocab_file.name  # muy importante guardar el vocal_file en el model
-            model_cfg.save_json(str(resolver.model_cfg_file(model_cfg, epoch)))
+            model_cfg.save_json(str(resolver.model_epoch_cfg_file(model_cfg, epoch)))
 
     #####################################################################################################
     # Guardado
