@@ -48,10 +48,10 @@ def run_train(
     for path in [model_file, model_cfg_json, log_file]:
         path.parent.mkdir(parents=True, exist_ok=True)
 
-    print("DEBUG settings.root =", repr(str(settings.root)))
-    print("DEBUG sequences_file =", repr(str(sequences_file)))
+    print("DEBUG sequences_file repr =", repr(str(sequences_file)))
     print("DEBUG exists =", Path(str(sequences_file)).exists())
     print("DEBUG is_file =", Path(str(sequences_file)).is_file())
+    print("DEBUG parts =", sequences_file.parts if hasattr(sequences_file, "parts") else "no_parts")
 
 
     #Load the device
