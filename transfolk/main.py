@@ -48,10 +48,10 @@ def run_train(
     for path in [model_file, model_cfg_json, log_file]:
         path.parent.mkdir(parents=True, exist_ok=True)
 
-    print("DEBUG settings.root =", settings.root)
-    print("DEBUG settings.root.parent =", settings.root.parent)
-    print("DEBUG sequences_file =", sequences_file)
-    print("DEBUG exists =", Path(sequences_file).exists())
+    print("DEBUG settings.root =", repr(str(settings.root)))
+    print("DEBUG sequences_file =", repr(str(sequences_file)))
+    print("DEBUG exists =", Path(str(sequences_file)).exists())
+    print("DEBUG is_file =", Path(str(sequences_file)).is_file())
 
 
     #Load the device
