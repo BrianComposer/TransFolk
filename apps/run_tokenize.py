@@ -12,7 +12,7 @@ if __name__ == "__main__":
     registry = ConfigRegistry()
     registry.load_all()
 
-    arch = registry.find_by_name("kurt001")
+    # arch = registry.find_by_name("kurt001")
     corpus = registry.find_by_name("todos")
     # tk = registry.find_by_name("chm")
     # mc = registry.find_by_name("major_x")
@@ -36,15 +36,15 @@ if __name__ == "__main__":
                                                   exp.music_context.tonality,
                                                   exp.allowed_durations.durations)
     # Crear directorios si no existen
-    os.makedirs(os.path.dirname(resolver.sequences_file(arch, exp)), exist_ok=True)
-    os.makedirs(os.path.dirname(resolver.vocab_file(arch, exp)), exist_ok=True)
-    os.makedirs(os.path.dirname(resolver.token_errors_file(arch, exp)), exist_ok=True)
+    os.makedirs(os.path.dirname(resolver.sequences_file(exp)), exist_ok=True)
+    os.makedirs(os.path.dirname(resolver.vocab_file(exp)), exist_ok=True)
+    os.makedirs(os.path.dirname(resolver.token_errors_file(exp)), exist_ok=True)
 
-    with open(resolver.sequences_file(arch, exp), "w") as f:
+    with open(resolver.sequences_file(exp), "w") as f:
         json.dump(sequences, f)
-    with open(resolver.vocab_file(arch, exp), "w") as f:
+    with open(resolver.vocab_file(exp), "w") as f:
         json.dump(vocab, f)
-    with open(resolver.token_errors_file(arch, exp), "w", encoding="utf-8") as f:
+    with open(resolver.token_errors_file(exp), "w", encoding="utf-8") as f:
         json.dump(errors, f, indent=4, ensure_ascii=False)
 
     print("✅ Tokenización completada.")
@@ -52,9 +52,9 @@ if __name__ == "__main__":
     #Inluimos la deteccion de patrones tras la tokenizacion en caso de algoritmo "patterns"
     if exp.tokenizer.name== "patterns":
         print(f"🎼 PATTERN DETECTION MODE: {exp.music_context.time_signature}, {exp.music_context.tonality}")
-        with open(resolver.sequences_file(arch, exp), "r") as f:
+        with open(resolver.sequences_file(exp), "r") as f:
             sequences = json.load(f)
-        with open(resolver.vocab_file(arch, exp), "r") as f:
+        with open(resolver.vocab_file(exp), "r") as f:
             vocab = json.load(f)
 
         print("🎶 Detección de patrones rítmicos")
@@ -62,8 +62,8 @@ if __name__ == "__main__":
         # print("🎼 Detección de patrones melódicos")
         # sequences_new2, vocab_new2 = searchMelodicPatterns(sequences_new, vocab_new,3,6, 50)
 
-        with open(resolver.sequences_file(arch, exp), "w") as f:
+        with open(resolver.sequences_file(exp), "w") as f:
             json.dump(sequences_new, f)
-        with open(resolver.vocab_file(arch, exp), "w") as f:
+        with open(resolver.vocab_file(exp), "w") as f:
             json.dump(vocab_new, f)
         print("✅ Detección de patrones finalizada.")

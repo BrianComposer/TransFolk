@@ -40,8 +40,8 @@ def run_train(
     settings = Settings(root_path)
     paths = ProjectPaths(settings.root)
     resolver = PathResolver(paths)
-    sequences_file = resolver.sequences_file(model_cfg.architecture, model_cfg.experiment)
-    vocab_file = resolver.vocab_file(model_cfg.architecture, model_cfg.experiment)
+    sequences_file = resolver.sequences_file(model_cfg.experiment)
+    vocab_file = resolver.vocab_file(model_cfg.experiment)
     model_file = resolver.model_file(model_cfg)
     model_cfg_json = resolver.model_cfg_file(model_cfg)
     log_file = resolver.loss_log_file(model_cfg)
@@ -168,8 +168,8 @@ def run_test_architecture(model_cfg: Model):
     paths = ProjectPaths(settings.root)
     resolver = PathResolver(paths)
 
-    sequences_file = resolver.sequences_file(model_cfg.architecture, model_cfg.experiment)
-    vocab_file = resolver.vocab_file(model_cfg.architecture, model_cfg.experiment)
+    sequences_file = resolver.sequences_file(model_cfg.experiment)
+    vocab_file = resolver.vocab_file(model_cfg.experiment)
 
     # -----------------------------
     # DEVICE
@@ -274,7 +274,7 @@ def run_generate(
     settings = Settings()
     paths = ProjectPaths(settings.root)
     resolver = PathResolver(paths)
-    vocab_file = resolver.vocab_file(model_cfg.architecture, model_cfg.experiment)
+    vocab_file = resolver.vocab_file(model_cfg.experiment)
     model_file = resolver.model_file(model_cfg)
     prod_dir = resolver.production_dir(model_cfg, runtime)
 
@@ -346,7 +346,7 @@ def run_generate_from_musicxml_prompt(
     settings = Settings()
     paths = ProjectPaths(settings.root)
     resolver = PathResolver(paths)
-    vocab_file = resolver.vocab_file(model_cfg.architecture, model_cfg.experiment)
+    vocab_file = resolver.vocab_file(model_cfg.experiment)
     model_file = resolver.model_file(model_cfg)
     prod_dir = resolver.production_dir(model_cfg, runtime)
 
@@ -431,7 +431,7 @@ def run_generate_from_TS_tonality(
     settings = Settings()
     paths = ProjectPaths(settings.root)
     resolver = PathResolver(paths)
-    vocab_file = resolver.vocab_file(model_cfg.architecture, model_cfg.experiment)
+    vocab_file = resolver.vocab_file(model_cfg.experiment)
     model_file = resolver.model_file(model_cfg)
     prod_dir = resolver.production_dir(model_cfg, runtime)
 

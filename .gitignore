@@ -54,33 +54,8 @@ Thumbs.db
 *.pt
 *.pth
 
-# Keep released models only (optional)
-
 # Ignorar todo dentro de models
-models/*
-
-# Permitir entrar en training
-!models/training/
-
-# Permitir subdirectorios concretos
-!models/training/mick002/
-!models/training/mick003/
-!models/training/mick004/
-!models/training/mick010/
-
-# Permitir contenido dentro
-!models/training/mick002/**
-!models/training/mick003/**
-!models/training/mick004/**
-!models/training/mick010/**
-
-# Bloquear el resto de carpetas de training
-models/training/john001/
-models/training/kurt001/
-models/training/robb001/
-models/training/stvy001/
-models/training/mick001/
-
+models/
 # Bloquear modelos del clasificador
 models_classifier/
 # =========================

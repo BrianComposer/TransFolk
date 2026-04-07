@@ -54,6 +54,14 @@ class PathResolver:
         else:
             return self.paths.data / f"{corpus.name}" / f"{subcorpus}_mid"
 
+    def tokenize_dir(self, exp: Experiment) -> Path:
+        return (
+            self.paths.data_tokenized
+            / exp.corpus.name
+            / exp.tokenizer.name
+        )
+
+
     # --------------------
     # TRAINING
     # --------------------
@@ -103,17 +111,17 @@ class PathResolver:
     # FILES
     # --------------------
 
-    def sequences_file(self, arch: TransformerArchitecture, exp: Experiment) -> Path:
+    def sequences_file(self, exp: Experiment) -> Path:
         ts = self._safe(exp.music_context.time_signature)
         ton = self._safe(exp.music_context.tonality)
         filename = f"sequences_{exp.corpus.name}_{exp.tokenizer.name}_{ton}_{ts}.json"
-        return self.train_dir(arch, exp) / filename
+        return self.tokenize_dir(exp) / filename
 
-    def vocab_file(self, arch: TransformerArchitecture, exp: Experiment) -> Path:
+    def vocab_file(self, exp: Experiment) -> Path:
         ts = self._safe(exp.music_context.time_signature)
         ton = self._safe(exp.music_context.tonality)
         filename = f"vocab_{exp.corpus.name}_{exp.tokenizer.name}_{ton}_{ts}.json"
-        return self.train_dir(arch, exp) / filename
+        return self.tokenize_dir(exp) / filename
 
     def loss_log_file(self, model: Model) -> Path:
         ts = self._safe(model.experiment.music_context.time_signature)
@@ -121,11 +129,11 @@ class PathResolver:
         filename = f"training_loss_{model.experiment.corpus.name}_{model.experiment.tokenizer.name}_{ton}_{ts}.json"
         return self.train_dir(model.architecture, model.experiment) / filename
 
-    def token_errors_file(self, arch: TransformerArchitecture, exp: Experiment) -> Path:
+    def token_errors_file(self, exp: Experiment) -> Path:
         ts = self._safe(exp.music_context.time_signature)
         ton = self._safe(exp.music_context.tonality)
         filename = f"errors_{exp.corpus.name}_{exp.tokenizer.name}_{ton}_{ts}.json"
-        return self.train_dir(arch, exp) / filename
+        return self.tokenize_dir(exp) / filename
 
     def model_file(self, model: Model) -> Path:
         ts = self._safe(model.experiment.music_context.time_signature)

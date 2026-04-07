@@ -1,0 +1,224 @@
+{
+    "MUR_124.xml": [
+        {
+            "type": "measure_inconsistent",
+            "measure": 5,
+            "found": 5.25,
+            "expected": 5.0
+        },
+        {
+            "type": "measure_inconsistent",
+            "measure": 7,
+            "found": 5.25,
+            "expected": 5.0
+        },
+        {
+            "type": "measure_inconsistent",
+            "measure": 9,
+            "found": 5.25,
+            "expected": 5.0
+        }
+    ],
+    "MUR_139.xml": [
+        {
+            "type": "measure_inconsistent",
+            "measure": 3,
+            "found": 9.5,
+            "expected": 9.0
+        },
+        {
+            "type": "measure_inconsistent",
+            "measure": 4,
+            "found": 9.5,
+            "expected": 9.0
+        }
+    ],
+    "MUR_233.xml": [
+        {
+            "type": "measure_inconsistent",
+            "measure": 3,
+            "found": 9.5,
+            "expected": 9.0
+        },
+        {
+            "type": "measure_inconsistent",
+            "measure": 4,
+            "found": 9.5,
+            "expected": 9.0
+        },
+        {
+            "type": "measure_inconsistent",
+            "measure": 8,
+            "found": 6.5,
+            "expected": 6.0
+        },
+        {
+            "type": "measure_inconsistent",
+            "measure": 10,
+            "found": 9.5,
+            "expected": 9.0
+        },
+        {
+            "type": "measure_inconsistent",
+            "measure": 11,
+            "found": 9.5,
+            "expected": 9.0
+        },
+        {
+            "type": "measure_inconsistent",
+            "measure": 16,
+            "found": 6.5,
+            "expected": 6.0
+        },
+        {
+            "type": "measure_inconsistent",
+            "measure": 19,
+            "found": 9.5,
+            "expected": 9.0
+        },
+        {
+            "type": "measure_inconsistent",
+            "measure": 20,
+            "found": 9.5,
+            "expected": 9.0
+        }
+    ],
+    "MUR_263.xml": [
+        {
+            "type": "measure_inconsistent",
+            "measure": 1,
+            "found": 9.5,
+            "expected": 9.0
+        },
+        {
+            "type": "measure_inconsistent",
+            "measure": 2,
+            "found": 9.5,
+            "expected": 9.0
+        }
+    ],
+    "MUR_30.xml": [
+        {
+            "type": "measure_inconsistent",
+            "measure": 6,
+            "found": 3.25,
+            "expected": 3.0
+        },
+        {
+            "type": "measure_inconsistent",
+            "measure": 15,
+            "found": 3.25,
+            "expected": 3.0
+        },
+        {
+            "type": "measure_inconsistent",
+            "measure": 16,
+            "found": 3.25,
+            "expected": 3.0
+        }
+    ],
+    "MUR_307.xml": [
+        {
+            "type": "measure_inconsistent",
+            "measure": 5,
+            "found": 6.0,
+            "expected": 5.5
+        },
+        {
+            "type": "measure_inconsistent",
+            "measure": 8,
+            "found": 12.0,
+            "expected": 11.5
+        }
+    ],
+    "MUR_95.xml": [
+        {
+            "type": "measure_inconsistent",
+            "measure": 2,
+            "found": 15.5,
+            "expected": 15.0
+        },
+        {
+            "type": "measure_inconsistent",
+            "measure": 6,
+            "found": 14.5,
+            "expected": 14.0
+        }
+    ],
+    "SEGUI_Campesinas_Siega_006.xml": [
+        {
+            "type": "measure_inconsistent",
+            "measure": 4,
+            "found": 3.25,
+            "expected": 3.0
+        },
+        {
+            "type": "measure_inconsistent",
+            "measure": 5,
+            "found": 3.25,
+            "expected": 3.0
+        },
+        {
+            "type": "measure_inconsistent",
+            "measure": 8,
+            "found": 3.25,
+            "expected": 3.0
+        },
+        {
+            "type": "measure_inconsistent",
+            "measure": 12,
+            "found": 3.25,
+            "expected": 3.0
+        },
+        {
+            "type": "measure_inconsistent",
+            "measure": 20,
+            "found": 3.25,
+            "expected": 3.0
+        },
+        {
+            "type": "measure_inconsistent",
+            "measure": 21,
+            "found": 3.25,
+            "expected": 3.0
+        },
+        {
+            "type": "measure_inconsistent",
+            "measure": 25,
+            "found": 3.75,
+            "expected": 3.5
+        }
+    ],
+    "SEGUI_Campesinas_Trilla_035.xml": [
+        {
+            "type": "measure_inconsistent",
+            "measure": 10,
+            "found": 4.008333,
+            "expected": 4.0
+        }
+    ],
+    "SEGUI_Danzadas_Boleros_005.xml": [
+        {
+            "type": "measure_inconsistent",
+            "measure": 14,
+            "found": 3.083333,
+            "expected": 3.0
+        }
+    ],
+    "SEGUI_Danzadas_Seguidillas_002.xml": [
+        {
+            "type": "measure_inconsistent",
+            "measure": 18,
+            "found": 3.125,
+            "expected": 3.0
+        }
+    ],
+    "SEGUI_Dulzaina_Varios_002.xml": [
+        {
+            "type": "measure_inconsistent",
+            "measure": 11,
+            "found": 3.041667,
+            "expected": 3.0
+        }
+    ]
+}

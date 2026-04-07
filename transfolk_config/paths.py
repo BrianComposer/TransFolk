@@ -11,6 +11,10 @@ class ProjectPaths:
         return self.root / "data"
 
     @property
+    def data_tokenized(self) -> Path:
+        return self.root / "data_tokenized"
+
+    @property
     def models(self) -> Path:
         return self.root / "models"
 
