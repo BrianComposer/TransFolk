@@ -7,10 +7,11 @@ import sys
 if __name__ == "__main__":
     ruta_base = sys.argv[1] if len(sys.argv) > 1 else None
     model_name = sys.argv[2] if len(sys.argv) > 2 else "mick001"
+    save_epochs = sys.argv[3] if len(sys.argv) > 3 else True
     registry = ConfigRegistry()
     registry.load_all()
     model = registry.find_by_name(f"{model_name}_todos_momet_x_x")
-    model = main.run_train(model, save_each_epoch=False, root_path=ruta_base)
+    model = main.run_train(model, save_each_epoch=save_epochs, root_path=ruta_base)
     registry.update_model(model)
 
 
