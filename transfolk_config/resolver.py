@@ -54,6 +54,13 @@ class PathResolver:
         else:
             return self.paths.data / f"{corpus.name}" / f"{subcorpus}_mid"
 
+
+    def data_token(self, corpus: Corpus, subcorpus=None) -> Path:
+        if subcorpus is None:
+            return self.paths.data_tokenized / f"{corpus.name}"
+        else:
+            return self.paths.data_tokenized / f"{corpus.name}" / f"{subcorpus}"
+
     def tokenize_dir(self, exp: Experiment) -> Path:
         return (
             self.paths.data_tokenized

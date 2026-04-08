@@ -365,13 +365,17 @@ def run_generate_from_musicxml_prompt(
 
     # 4. Cargamos el modelo
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    trans_model = MusicTransformer(vocab_size=len(vocab),
-                                   d_model=model_cfg.architecture.d_model,
-                                   nhead=model_cfg.architecture.n_heads,
-                                   num_layers=model_cfg.architecture.n_layers,
-                                   dim_feedforward=model_cfg.architecture.d_ff,
-                                   dropout=model_cfg.architecture.dropout,
-                                   max_seq_len=2 * model_cfg.architecture.max_seq_len).to(device)
+    trans_model = ModelFactory.build(
+        architecture=model_cfg.architecture,
+        vocab_size=len(vocab)
+    ).to(device)
+    # trans_model = MusicTransformer(vocab_size=len(vocab),
+    #                                d_model=model_cfg.architecture.d_model,
+    #                                nhead=model_cfg.architecture.n_heads,
+    #                                num_layers=model_cfg.architecture.n_layers,
+    #                                dim_feedforward=model_cfg.architecture.d_ff,
+    #                                dropout=model_cfg.architecture.dropout,
+    #                                max_seq_len=2 * model_cfg.architecture.max_seq_len).to(device)
     trans_model.load_state_dict(torch.load(model_file, map_location=device))
 
 
@@ -450,13 +454,17 @@ def run_generate_from_TS_tonality(
 
     # 4. Cargamos el modelo
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    trans_model = MusicTransformer(vocab_size=len(vocab),
-                                   d_model=model_cfg.architecture.d_model,
-                                   nhead=model_cfg.architecture.n_heads,
-                                   num_layers=model_cfg.architecture.n_layers,
-                                   dim_feedforward=model_cfg.architecture.d_ff,
-                                   dropout=model_cfg.architecture.dropout,
-                                   max_seq_len=2 * model_cfg.architecture.max_seq_len).to(device)
+    trans_model = ModelFactory.build(
+        architecture=model_cfg.architecture,
+        vocab_size=len(vocab)
+    ).to(device)
+    # trans_model = MusicTransformer(vocab_size=len(vocab),
+    #                                d_model=model_cfg.architecture.d_model,
+    #                                nhead=model_cfg.architecture.n_heads,
+    #                                num_layers=model_cfg.architecture.n_layers,
+    #                                dim_feedforward=model_cfg.architecture.d_ff,
+    #                                dropout=model_cfg.architecture.dropout,
+    #                                max_seq_len=2 * model_cfg.architecture.max_seq_len).to(device)
     trans_model.load_state_dict(torch.load(model_file, map_location=device))
 
 
@@ -493,4 +501,104 @@ def run_generate_from_TS_tonality(
     except Exception as e:
         print(e)
 
+
+
+
+def run_generate_for_curves_style(
+        model_cfg: Model,
+        runtime: RuntimeGenerate,
+        temperatures,
+        dict_norm,
+        pieces_per_temp):
+
+
+    # 1. load the resolver and the files
+    settings = Settings()
+    paths = ProjectPaths(settings.root)
+    resolver = PathResolver(paths)
+    vocab_file = resolver.vocab_file(model_cfg.experiment)
+    model_file = resolver.model_file(model_cfg)
+    prod_dir = resolver.production_dir(model_cfg, runtime)
+
+    # 2. Cargar vocabulario
+    with open(vocab_file, "r") as f:
+        vocab = json.load(f)
+    inv_vocab = {v: k for k, v in vocab.items()}
+
+
+    # 3. Cargamos el modelo
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    trans_model = ModelFactory.build(
+        architecture=model_cfg.architecture,
+        vocab_size=len(vocab)
+    ).to(device)
+    # trans_model = MusicTransformer(vocab_size=len(vocab),
+    #                                d_model=model_cfg.architecture.d_model,
+    #                                nhead=model_cfg.architecture.n_heads,
+    #                                num_layers=model_cfg.architecture.n_layers,
+    #                                dim_feedforward=model_cfg.architecture.d_ff,
+    #                                dropout=model_cfg.architecture.dropout,
+    #                                max_seq_len=model_cfg.architecture.max_seq_len).to(device)
+    trans_model.load_state_dict(torch.load(model_file, map_location=device))
+
+    for temperature in temperatures:
+        for (time_signature, tonality), value in dict_norm.items():
+            num = value * pieces_per_temp
+            if num < 1: continue
+
+            for _ in range(int(num)):
+                # 4. Generar tokens iniciales
+                prompt_tokens = []
+                if not time_signature or not tonality:
+                    raise exception("No Time Signature or Tonality was given.")
+                if tonality.lower() not in ["minor", "major"]:
+                    raise exception("Tonality not allowed.")
+
+                # prompt_tokens.append(f"START")
+                prompt_tokens.append(f"TS_{time_signature}")
+                prompt_tokens.append(f"MODE_{tonality.lower()}")
+                prompt_tokens.append(f"BAR")
+
+                # 5. Convertir tokens del prompt a IDs
+                try:
+                    prompt_token_ids = [vocab[t] for t in prompt_tokens]
+                    prompt_token_ids = [vocab["START"]] + prompt_token_ids
+                except KeyError as e:
+                    raise RuntimeError(f"Token not in vocabulary: {e}")
+
+
+                try:
+                    # 6. Generar obras
+                    start_token_id = vocab["START"]
+                    generated_tokens = generate_sequence_from_prompt(
+                        model=trans_model,
+                        start_token_id_list=prompt_token_ids,
+                        max_len=runtime.max_len,
+                        vocab=vocab,
+                        inv_vocab=inv_vocab,
+                        device=device,
+                        temperature=temperature,
+                        top_k=runtime.top_k,
+                        top_p=runtime.top_p,
+                        penalty=runtime.repetition_penalty
+                    )
+
+
+                    # Guardar el archivo
+                    print("🎼 Tokens generados:", generated_tokens)
+
+                    # Crear carpeta "productions" si no existe
+                    os.makedirs(prod_dir, exist_ok=True)
+                    filepath = resolver.generated_new_file(model_cfg, runtime)
+                    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+
+                    # Guardar el archivo
+                    music_stream = tokens_to_music21_stream(generated_tokens,
+                                                            model_cfg.experiment.allowed_durations.durations
+                                                            )
+                    music_stream.write("musicxml", fp=filepath)
+                    print(f"✅ Archivo generado: {filepath}")
+
+                except Exception as e:
+                    print(e)
 

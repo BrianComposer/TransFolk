@@ -1,7 +1,7 @@
 from transfolk_config import *
 from apps.db.config_registry import ConfigRegistry
 from transfolk_preprocesing.dataCleaning import normalize_musicxml_corpus_new
-
+from transfolk_preprocesing.count_TS_tonality import count_ts_mode_distribution
 
 if __name__ == "__main__":
     settings = Settings()
@@ -10,11 +10,17 @@ if __name__ == "__main__":
 
     registry = ConfigRegistry()
     registry.load_all()
-    corpus = registry.find_by_name("todos")
+    corpus = registry.find_by_name("teimus")
     adc=registry.find_by_name("corpus_cleaning")
 
     data_dir_raw = resolver.data_raw(corpus)
     data_dir_clean = resolver.data_clean(corpus)
+
+    # normalized = count_ts_mode_distribution(
+    #     corpus_path=str(data_dir_clean),
+    #     output_dir=str(resolver.data_token(corpus))
+    # )
+
 
     normalize_musicxml_corpus_new(data_dir_raw,
                                   data_dir_clean,
