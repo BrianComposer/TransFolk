@@ -509,11 +509,12 @@ def run_generate_for_curves_style(
         runtime: RuntimeGenerate,
         temperatures,
         dict_norm,
-        pieces_per_temp):
+        pieces_per_temp,
+        base_root):
 
 
     # 1. load the resolver and the files
-    settings = Settings()
+    settings = Settings(base_root)
     paths = ProjectPaths(settings.root)
     resolver = PathResolver(paths)
     vocab_file = resolver.vocab_file(model_cfg.experiment)
