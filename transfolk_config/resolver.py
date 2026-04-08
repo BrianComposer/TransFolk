@@ -122,13 +122,13 @@ class PathResolver:
         ts = self._safe(exp.music_context.time_signature)
         ton = self._safe(exp.music_context.tonality)
         filename = f"sequences_{exp.corpus.name}_{exp.tokenizer.name}_{ton}_{ts}.json"
-        return self.tokenize_dir(exp) / filename
+        return self.data_token(exp.corpus)/ exp.tokenizer.name / filename
 
     def vocab_file(self, exp: Experiment) -> Path:
         ts = self._safe(exp.music_context.time_signature)
         ton = self._safe(exp.music_context.tonality)
         filename = f"vocab_{exp.corpus.name}_{exp.tokenizer.name}_{ton}_{ts}.json"
-        return self.tokenize_dir(exp) / filename
+        return self.data_token(exp.corpus)/ exp.tokenizer.name / filename
 
     def loss_log_file(self, model: Model) -> Path:
         ts = self._safe(model.experiment.music_context.time_signature)
