@@ -10,7 +10,7 @@ if __name__ == "__main__":
     ruta_base = sys.argv[1] if len(sys.argv) > 1 else None
     corpus_name = sys.argv[2] if len(sys.argv) > 2 else "todos"
     tokenizer = sys.argv[3] if len(sys.argv) > 3 else "momet"
-    model_name = sys.argv[4] if len(sys.argv) > 4 else "kurt001"
+    model_name = sys.argv[4] if len(sys.argv) > 4 else "mick001"
 
     settings = Settings(ruta_base)
     paths = ProjectPaths(settings.root)

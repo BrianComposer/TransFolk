@@ -221,7 +221,7 @@ class PathResolver:
         ts = self._safe(model.experiment.music_context.time_signature)
         ton = self._safe(model.experiment.music_context.tonality)
 
-        filename = f"{model.name}_{model.experiment.tokenizer.name}_{ts}_{ton}_{timestamp}.musicxml"
+        filename = f"{model.architecture.name}_{model.experiment.tokenizer.name}_{ts}_{ton}_{timestamp}.musicxml"
 
         return self.production_dir(model, runtime) / filename
 

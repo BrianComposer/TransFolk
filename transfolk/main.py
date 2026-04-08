@@ -542,10 +542,11 @@ def run_generate_for_curves_style(
     trans_model.load_state_dict(torch.load(model_file, map_location=device))
 
     for temperature in temperatures:
+        runtime.temperature = temperature
         for (time_signature, tonality), value in dict_norm.items():
             num = value * pieces_per_temp
             if num < 1: continue
-
+            print(f"Generating {time_signature} {tonality}: {num} pieces")
             for _ in range(int(num)):
                 # 4. Generar tokens iniciales
                 prompt_tokens = []
@@ -573,7 +574,7 @@ def run_generate_for_curves_style(
                     generated_tokens = generate_sequence_from_prompt(
                         model=trans_model,
                         start_token_id_list=prompt_token_ids,
-                        max_len=runtime.max_len,
+                        max_len=runtime.max_len-10,
                         vocab=vocab,
                         inv_vocab=inv_vocab,
                         device=device,
