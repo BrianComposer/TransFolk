@@ -26,7 +26,7 @@ if __name__ == "__main__":
     print(f"--> 📉 Generation of pieces...")
 
     # 1. Cargar el diccionario de ocurrencias TS/tonality previamente calculado para cada corpus
-    dict_norm = load_ts_mode_distribution(f"{str(resolver.data_token(corpus))}/ts_mode_distribution_normalized.json")
+    dict_norm = load_ts_mode_distribution(f"{str(resolver.data_token(corpus))}\\ts_mode_distribution_normalized.json")
 
     TEMPERATURES = np.arange(0.8, 2.2, 0.1)
     main.run_generate_for_curves_style(model, rt, TEMPERATURES, dict_norm, 100)
