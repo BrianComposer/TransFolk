@@ -29,7 +29,7 @@ if __name__ == "__main__":
     print(f"--> 📉 Generation of pieces...")
 
     # 1. Cargar el diccionario de ocurrencias TS/tonality previamente calculado para cada corpus
-    dict_norm = load_ts_mode_distribution(f"{str(resolver.data_token(corpus))}\\ts_mode_distribution_normalized.json")
+    dict_norm = load_ts_mode_distribution(fr"{str(resolver.data_token(corpus))}/ts_mode_distribution_normalized.json")
 
     # 2. Generamos las piezas para cada temperatura
     TEMPERATURES = np.arange(0.8, 2.2, 0.1)
