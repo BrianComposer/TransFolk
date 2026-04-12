@@ -14,7 +14,7 @@ class Settings:
                 self.root = Path(Path.cwd()).resolve() #Truco para que se pueda ejecutar en runpod con python -m apps.run_train "."
                 print("RUNPOD SETTINGS ROOT =", self.root)
             else:
-                self.root = Path(root).resolve()
+                self.root = Path(root).resolve().parent.parent
         elif os.environ.get("TRANSFOLK"):
             self.root = Path(os.environ.get("TRANSFOLK")).resolve()
         else:
