@@ -33,7 +33,7 @@ if __name__ == "__main__":
 
     # 2. Generamos las piezas para cada temperatura
     TEMPERATURES = np.arange(0.8, 2.2, 0.1)
-    #main.run_generate_for_curves_style(model, rt, TEMPERATURES, dict_norm, num_pieces, ruta_base)
+    main.run_generate_for_curves_style(model, rt, TEMPERATURES, dict_norm, num_pieces, ruta_base)
 
     # 3. Generamos la gráfica
     model_dir = resolver.paths.models_classifier  # carpeta para guardar o cargar el modelo
