@@ -510,7 +510,8 @@ def run_generate_for_curves_style(
         temperatures,
         dict_norm,
         pieces_per_temp,
-        base_root):
+        base_root,
+        verbose=False):
 
 
     # 1. load the resolver and the files
@@ -548,7 +549,7 @@ def run_generate_for_curves_style(
             num = int(value * pieces_per_temp)
             if num < 1: continue
             print(f"Generating {time_signature} {tonality}: {num} pieces")
-            for _ in range(num):
+            for i in range(num):
                 # 4. Generar tokens iniciales
                 prompt_tokens = []
                 if not time_signature or not tonality:
@@ -587,7 +588,8 @@ def run_generate_for_curves_style(
 
 
                     # Guardar el archivo
-                    print("🎼 Tokens generados:", generated_tokens)
+                    if verbose:
+                        print("🎼 Tokens generados:", generated_tokens)
 
                     # Crear carpeta "productions" si no existe
                     os.makedirs(prod_dir, exist_ok=True)
@@ -599,7 +601,7 @@ def run_generate_for_curves_style(
                                                             model_cfg.experiment.allowed_durations.durations
                                                             )
                     music_stream.write("musicxml", fp=filepath)
-                    print(f"✅ Archivo generado: {filepath}")
+                    print(f"✅ Archivo generado {i}/{num}: {filepath}")
 
                 except Exception as e:
                     print(e)
