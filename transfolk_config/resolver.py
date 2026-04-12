@@ -216,7 +216,7 @@ class PathResolver:
         return self.train_dir(exp) / filename
 
     def generated_new_file(self, model: Model, runtime: RuntimeGenerate) -> Path:
-        timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+        timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f")
 
         ts = self._safe(model.experiment.music_context.time_signature)
         ton = self._safe(model.experiment.music_context.tonality)
