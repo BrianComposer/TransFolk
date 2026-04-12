@@ -44,4 +44,6 @@ if __name__ == "__main__":
                                                TONALITY="x",
                                                PROD_DIR=prod_dir,
                                                TEMPERATURES=TEMPERATURES,
-                                               show=False)
+                                               show=False,
+                                               model_name=model_name,
+                                               corpus_name=corpus_name)
