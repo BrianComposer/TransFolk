@@ -1,0 +1,10 @@
+{
+  "algorithm_id": 4,
+  "algorithm_name": "random_forest",
+  "label_prof": "Profano",
+  "label_reli": "Religioso",
+  "n_train": 212,
+  "n_prof": 126,
+  "n_reli": 86,
+  "n_features": 43
+}

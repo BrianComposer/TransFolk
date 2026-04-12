@@ -545,10 +545,10 @@ def run_generate_for_curves_style(
     for temperature in temperatures:
         runtime.temperature = temperature
         for (time_signature, tonality), value in dict_norm.items():
-            num = value * pieces_per_temp
+            num = int(value * pieces_per_temp)
             if num < 1: continue
             print(f"Generating {time_signature} {tonality}: {num} pieces")
-            for _ in range(int(num)):
+            for _ in range(num):
                 # 4. Generar tokens iniciales
                 prompt_tokens = []
                 if not time_signature or not tonality:

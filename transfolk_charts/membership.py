@@ -134,15 +134,15 @@ def mean_entropy_for_folder(folder):
         entropies.append(H)
     return float(np.mean(entropies)) if entropies else 0.0
 
-def Membership_Entropy_Scatter_Plot(MODEL, TIME_SIGNATURE, TONALITY, PROD_DIR, TEMPERATURES, show=True):
-    model_dir = rf"classifier\{MODEL}"  # carpeta del modelo del clasificador
+def Membership_Entropy_Scatter_Plot(MODEL_DIR, TIME_SIGNATURE, TONALITY, PROD_DIR, TEMPERATURES, show=True, model_name=None, corpus_name=None):
+    model_dir = MODEL_DIR  # carpeta del modelo del clasificador
     globalMemberships = []
     stdMemberships = []
     meanEntropies = []
 
     for TEMPERATURE in TEMPERATURES:
         print(f"🔥 Midiendo membership global para temperatura: {TEMPERATURE}")
-        new_dir = f"{PROD_DIR}/{TIME_SIGNATURE.replace('/', '_')}/{TONALITY}/{TEMPERATURE:.1f}"
+        new_dir = fr"{PROD_DIR}/{TIME_SIGNATURE.replace('/', '_')}/{TONALITY}/{TEMPERATURE:.1f}"
         average, std = corpus_membership_classifier.evaluate_model(new_dir, model_dir)
         globalMemberships.append(average)
         stdMemberships.append(std)
@@ -230,7 +230,30 @@ def Membership_Entropy_Scatter_Plot(MODEL, TIME_SIGNATURE, TONALITY, PROD_DIR, T
         )
 
     # Estilo tipo paper científico
-    plt.title(f"Global Membership vs. Mean Token Entropy ({TIME_SIGNATURE}, mode {TONALITY})", fontsize=14, fontweight='bold', pad=15)
+    title_parts = ["Global Membership vs. Mean Token Entropy"]
+
+    # Añadir time signature solo si no es 'x'
+    if TIME_SIGNATURE != "x":
+        title_parts.append(TIME_SIGNATURE)
+
+    # Añadir tonalidad solo si no es 'x'
+    if TONALITY != "x":
+        title_parts.append(f"mode {TONALITY}")
+
+    # Añadir model y corpus solo si no son None
+    if model_name is not None:
+        title_parts.append(f"model={model_name}")
+
+    if corpus_name is not None:
+        title_parts.append(f"corpus={corpus_name}")
+
+    plt.title(
+        " (" + ", ".join(title_parts[1:]) + ")" if len(title_parts) > 1 else title_parts[0],
+        fontsize=14,
+        fontweight='bold',
+        pad=15
+    )
+    #plt.title(f"Global Membership vs. Mean Token Entropy ({TIME_SIGNATURE}, mode {TONALITY})", fontsize=14, fontweight='bold', pad=15)
     plt.xlabel("Mean Token Entropy (bits per token)", fontsize=12)
     plt.ylabel("Global Membership (%)", fontsize=12)
     plt.grid(True, linestyle='--', linewidth=0.6, alpha=0.6)

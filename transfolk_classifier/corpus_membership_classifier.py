@@ -102,11 +102,20 @@ def extract_features(path):
 
 
 def load_features_from_dir(path):
-    paths = sorted(glob.glob(os.path.join(path, "**", "*.musicxml"), recursive=True))
-    if not paths:
-        paths = sorted(glob.glob(os.path.join(path, "**", "*.xml"), recursive=True))
+    # paths = sorted(glob.glob(os.path.join(path, "**", "*.musicxml"), recursive=True))
+    # if not paths:
+    #     paths = sorted(glob.glob(os.path.join(path, "**", "*.xml"), recursive=True))
+    patterns = ["*.musicxml", "*.xml", "*.mxl"]
+    paths = []
+    for pattern in patterns:
+        paths.extend(glob.glob(os.path.join(path, "**", pattern), recursive=True))
+
+    paths = sorted(paths)
+
     feats, valid = [], []
-    for p in paths:
+    for i in range(len(paths)):
+        p=paths[i]
+        print(f"\rProcesando {i}/{len(paths)}")
         f = extract_features(p)
         if f:
             feats.append(f)

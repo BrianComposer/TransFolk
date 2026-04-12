@@ -1,0 +1,10 @@
+{
+  "algorithm_id": 5,
+  "algorithm_name": "hist_gradient_boosting",
+  "label_prof": "Profano",
+  "label_reli": "Religioso",
+  "n_train": 212,
+  "n_prof": 126,
+  "n_reli": 86,
+  "n_features": 43
+}

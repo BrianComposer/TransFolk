@@ -13,7 +13,7 @@ if __name__ == "__main__":
     # adt = registry.find_by_name("basic_set")
     # exp = registry.find_by_name("todos_baseline_major_2_4")
     rt = registry.find_by_name("generate_5")
-    model = registry.find_by_name("robb001_todos_momet_x_x")
+    model = registry.find_by_name("mick010_todos_momet_x_x")
     main.run_generate(model, rt)
     # main.run_generate_from_musicxml_prompt(model, rt,
     # r"G:\Mi unidad\Programacion\Python\TransFolk\experiments\prompts\prompt1.xml")

@@ -57,7 +57,7 @@ Thumbs.db
 # Ignorar todo dentro de models
 models/
 # Bloquear modelos del clasificador
-models_classifier/
+#models_classifier/
 # =========================
 
 # Outputs and experiments
