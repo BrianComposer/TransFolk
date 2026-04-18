@@ -6,15 +6,23 @@ import sys
 
 if __name__ == "__main__":
     ruta_base = sys.argv[1] if len(sys.argv) > 1 else None
-    model_name = sys.argv[2] if len(sys.argv) > 2 else "mick001"
+    model_name = sys.argv[2] if len(sys.argv) > 2 else "todos"
     corpus_name = sys.argv[3] if len(sys.argv) > 3 else "todos"
     token_name = sys.argv[4] if len(sys.argv) > 4 else "momet"
     save_epochs = sys.argv[5] if len(sys.argv) > 5 else False
     registry = ConfigRegistry()
     registry.load_all()
-    model = registry.find_by_name(f"{model_name}_{corpus_name}_{token_name}_x_x")
-    model = main.run_train(model, save_each_epoch=save_epochs, root_path=ruta_base)
-    registry.update_model(model)
+
+    models = []
+    if model_name == "todos":
+        models=[ "kurt010", "robb010", "john010", "mick010" ]
+    else:
+        models=[model_name]
+
+    for modelname in models:
+        model = registry.find_by_name(f"{modelname}_{corpus_name}_{token_name}_x_x")
+        model = main.run_train(model, save_each_epoch=save_epochs, root_path=ruta_base)
+        registry.update_model(model)
 
 
 
