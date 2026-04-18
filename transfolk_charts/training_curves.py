@@ -215,7 +215,7 @@ def plot_training_loss_all(charts_dir, train_dir, corpus, algorithm, smooth=True
 
 
 
-def plot_training_loss_all_paper(
+def plot_training_loss_all_paper_old(
     charts_dir, train_dir, corpus, algorithm,
     smooth=True, font_size=14, axis_size=12,
     show_tittle=True, show_chart=True
@@ -345,3 +345,170 @@ def plot_training_loss_all_paper(
 
     if show_chart:
         plt.show()
+
+
+def plot_training_loss_all_paper(
+    charts_dir,
+    train_dir,
+    architectures_names,
+    corpus,
+    algorithm,
+    smooth=True,
+    font_size=14,
+    axis_size=12,
+    show_tittle=True,
+    show_chart=True
+):
+    import os
+    import glob
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from scipy.interpolate import make_interp_spline
+    from matplotlib.ticker import MultipleLocator
+
+    # =========================
+    # Estilo
+    # =========================
+    plt.style.use("tableau-colorblind10")
+    plt.rcParams["font.family"] = "Arial"
+    plt.rcParams["axes.unicode_minus"] = False
+
+    fig, ax = plt.subplots(figsize=(9, 6))
+
+    global_min = float("inf")
+    global_max = float("-inf")
+
+    linestyles = ["-", "--", "-.", ":", "-", "--", "-.", ":"]
+
+    # =========================
+    # Loop por arquitecturas (orden garantizado)
+    # =========================
+    for idx, arch_name in enumerate(architectures_names):
+
+        pattern = os.path.join(
+            train_dir,
+            arch_name,
+            corpus,
+            algorithm,
+            f"training_loss_{corpus}_*.json"
+        )
+
+        matches = sorted(glob.glob(pattern))
+
+        if not matches:
+            print(f"[WARN] No hay JSON para {arch_name}")
+            continue
+
+        # Si hay varios, cogemos el más reciente
+        jf = max(matches, key=os.path.getmtime)
+
+        epochs, losses = load_training_json(jf)
+        epochs = np.array(epochs, dtype=float)
+        losses = np.array(losses, dtype=float)
+
+        if len(epochs) == 0:
+            continue
+
+        # =========================
+        # Suavizado
+        # =========================
+        if smooth and len(epochs) > 3:
+            xs = np.linspace(epochs.min(), epochs.max(), 400)
+            try:
+                spline = make_interp_spline(epochs, losses, k=3)
+                ys = spline(xs)
+            except Exception:
+                xs, ys = epochs, losses
+        else:
+            xs, ys = epochs, losses
+
+        ls = linestyles[idx % len(linestyles)]
+
+        ax.plot(
+            xs,
+            ys,
+            linewidth=1.8,
+            linestyle=ls,
+            label=arch_name  # ← AQUÍ ya usas directamente la arquitectura
+        )
+
+        ax.scatter(
+            epochs,
+            losses,
+            s=10,
+            zorder=3
+        )
+
+        global_min = min(global_min, losses.min())
+        global_max = max(global_max, losses.max())
+
+    # =========================
+    # Labels
+    # =========================
+    ax.set_xlabel("Epoch", fontsize=font_size)
+    ax.set_ylabel("Loss", fontsize=font_size)
+
+    if show_tittle:
+        ax.set_title(
+            f"Training Loss Comparison ({corpus}, {algorithm})",
+            fontsize=font_size,
+            fontweight="bold",
+            pad=12
+        )
+
+    # =========================
+    # Ejes
+    # =========================
+    ax.set_xticks(np.arange(0, 41, 5))
+    ax.set_xlim(0, 40)
+
+    if np.isfinite(global_min) and np.isfinite(global_max):
+        y_min = max(0, np.floor(global_min * 2) / 2)
+        y_max = np.ceil(global_max * 2) / 2
+
+        ax.set_yticks(np.arange(y_min, y_max + 0.5, 0.5))
+        ax.set_ylim(y_min, y_max)
+        ax.yaxis.set_minor_locator(MultipleLocator(0.1))
+
+    # =========================
+    # Estética
+    # =========================
+    ax.tick_params(
+        axis="both",
+        which="both",
+        labelsize=axis_size,
+        color="black",
+        labelcolor="black",
+        width=0.8,
+        length=3
+    )
+
+    for spine in ax.spines.values():
+        spine.set_linewidth(0.8)
+        spine.set_color("black")
+
+    ax.grid(True, which="major", linestyle="--", linewidth=0.4, color="#e6e6e6")
+    ax.grid(True, which="minor", linestyle=":", linewidth=0.3, color="#f2f2f2")
+
+    ax.legend(frameon=False, fontsize=font_size - 2, loc="upper right")
+
+    plt.tight_layout()
+
+    os.makedirs(charts_dir, exist_ok=True)
+
+    out_png = os.path.join(
+        charts_dir,
+        f"training_curve_todos_{corpus}_{algorithm}.png"
+    )
+    out_eps = os.path.join(
+        charts_dir,
+        f"training_curve_todos_{corpus}_{algorithm}.eps"
+    )
+
+    plt.savefig(out_png, dpi=600, bbox_inches="tight")
+    plt.savefig(out_eps, format="eps", bbox_inches="tight")
+
+    if show_chart:
+        plt.show()
+    else:
+        plt.close(fig)

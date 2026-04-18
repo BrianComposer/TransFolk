@@ -198,11 +198,11 @@ def pca_fit_transform_numpy(X, n_components=2):
 # 3) Visualización
 # ---------------------------
 
-def visualize_pca_numpy(charts_dir, corpus_dir, generated_dir, CORPUS, ALGORITHM, TIME_SIGNATURE, TONALITY, TEMPERATURE, font_size = 14, axis_size=12, show_tittle=True, show_chart=True, by_temperature=True):
+def visualize_pca_numpy(charts_dir, corpus_dir, generated_dir, MODEL_NAME, CORPUS, ALGORITHM, TIME_SIGNATURE, TONALITY, TEMPERATURE, font_size = 14, axis_size=12, show_tittle=True, show_chart=True, by_temperature=True):
     # Carga rasgos
     Xc, names_c = load_features_from_dir(corpus_dir)
     if by_temperature:
-        algo_dir = f"productions/{CORPUS}/{ALGORITHM}"
+        algo_dir = f"productions/{MODEL_NAME}/{CORPUS}/{ALGORITHM}"
         Xg, names_g = load_features_by_temperature(algo_dir, TEMPERATURE)
     else:
         Xg, names_g = load_features_from_dir(generated_dir)
