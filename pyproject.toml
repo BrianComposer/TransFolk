@@ -6,9 +6,9 @@ build-backend = "setuptools.build_meta"
 name = "transfolk"
 version = "0.2.0"
 description = "TransFolk: symbolic folk melody generation with Transformers"
-requires-python = ">=3.11.8"
+requires-python = ">=3.11.0"
 dependencies = [
-  "torch==2.2.2",
+  "torch==2.11.0",
   "numpy==1.26.4",
   "scipy==1.11.4",
   "music21==8.3.0",
