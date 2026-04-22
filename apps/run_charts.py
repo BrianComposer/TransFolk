@@ -26,7 +26,7 @@ if __name__ == "__main__":
     print(f"--> 📈 TRAINING CURVES: {corpus.name}, {tk.name}")
     training_curves.plot_training_loss_all_paper(resolver.charts_dir(),
                                            str(paths.models_training),
-                                        ["kurt006", "john006", "mick006", "robb006"],
+                                        ["john010", "mick010", "robb010"],
                                            corpus.name,
                                            tk.name,
                                            font_size=24,
@@ -34,7 +34,7 @@ if __name__ == "__main__":
                                            show_tittle=False,
                                            show_chart=True)
 
-    for name in ["kurt006", "john006", "mick006", "robb006"]:
+    for name in ["john010", "mick010", "robb010"]:
 
         print(f"--> 🔸 PCA of Corpus vs. Generated: {corpus}, {algorithm}, {time_signature}, {tonality}, {temperature}")
         pca.visualize_pca_numpy(charts_dir, data_dir_clean, prod_dir, corpus, algorithm, time_signature, tonality, temperature, font_size=18, axis_size=16, show_tittle=True, show_chart=True, by_temperature=False)
