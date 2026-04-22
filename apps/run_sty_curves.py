@@ -23,7 +23,7 @@ if __name__ == "__main__":
 
     models = []
     if modelname == "todos":
-        models = ["kurt010", "robb010", "john010", "mick010"]
+        models = ["kurt010", "mick010"]
     else:
         models = [modelname]
 
