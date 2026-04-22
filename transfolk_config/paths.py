@@ -19,6 +19,10 @@ class ProjectPaths:
         return self.root / "models"
 
     @property
+    def models_training(self) -> Path:
+        return self.models / "training"
+
+    @property
     def models_classifier(self) -> Path:
         return self.root / "models_classifier/sty_curves"
 

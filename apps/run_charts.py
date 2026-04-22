@@ -1,34 +1,50 @@
+from platform import architecture
+
 from transfolk_config import *
 from apps.db.config_registry import ConfigRegistry
 from transfolk_charts import pca, densityHeatmap, training_curves, histogramsMultimetric, membership
+import sys
+
 
 if __name__ == "__main__":
-    registry = ConfigRegistry()
-    registry.load_all()
-    settings = Settings()
+    ruta_base = sys.argv[1] if len(sys.argv) > 1 else None
+    corpus_name = sys.argv[2] if len(sys.argv) > 2 else "todos"
+    tokenizer = sys.argv[3] if len(sys.argv) > 3 else "momet"
+    # model_name = sys.argv[4] if len(sys.argv) > 4 else "mick001"
+    # num_pieces = int(sys.argv[5] if len(sys.argv) > 5 else 100)
+
+    settings = Settings(ruta_base)
     paths = ProjectPaths(settings.root)
     resolver = PathResolver(paths)
+    registry = ConfigRegistry()
+    registry.load_all()
 
-    arch = registry.find_by_name("kurt001")
-    corpus = registry.find_by_name("todos")
-    tk = registry.find_by_name("baseline")
-    mc = registry.find_by_name("major_2_4")
-    adt = registry.find_by_name("basic_set")
-    exp = registry.find_by_name("todos_baseline_major_2_4")
-    rt = registry.find_by_name("train_2")
-    model = registry.find_by_name("kurt001_todos_momet_x_x")
+    corpus = registry.find_by_name(corpus_name)
+    tk = registry.find_by_name(tokenizer)
+    # model = registry.find_by_name(f"{model_name}_{corpus_name}_{tokenizer}_x_x")
 
-
-
+    print(f"--> 📈 TRAINING CURVES: {corpus.name}, {tk.name}")
     training_curves.plot_training_loss_all_paper(resolver.charts_dir(),
-                                           str(resolver.train_dir(arch, exp)),
+                                           str(paths.models_training),
+                                        ["kurt006", "john006", "mick006", "robb006"],
                                            corpus.name,
                                            tk.name,
                                            font_size=24,
                                            axis_size=16,
                                            show_tittle=False,
                                            show_chart=True)
-#
+
+    for name in ["kurt006", "john006", "mick006", "robb006"]:
+
+        print(f"--> 🔸 PCA of Corpus vs. Generated: {corpus}, {algorithm}, {time_signature}, {tonality}, {temperature}")
+        pca.visualize_pca_numpy(charts_dir, data_dir_clean, prod_dir, corpus, algorithm, time_signature, tonality, temperature, font_size=18, axis_size=16, show_tittle=True, show_chart=True, by_temperature=False)
+
+        print(f"--> 📊 Comparative Histograms: {corpus}, {algorithm}, {time_signature}, {tonality}, {temperature}")
+        histogramsMultimetric.comparative_histograms_multimetric(charts_dir, data_dir_clean, prod_dir, 20, corpus, algorithm, time_signature, tonality, temperature, font_size=18, axis_size=16, legend_size=12, show_tittle=True, show_chart=True)
+
+        print(f"--> 🔥 Kernel-Density heatmap: {corpus}, {algorithm}, {time_signature}, {tonality}, {temperature}")
+        densityHeatmap.kernel_density_heatmap(charts_dir, data_dir_clean, prod_dir, 100, corpus, algorithm, time_signature, tonality, temperature, font_size=18, axis_size=16, show_tittle=True, show_chart=True)
+
 
 
 #
