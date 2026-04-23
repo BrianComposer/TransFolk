@@ -26,7 +26,7 @@ if __name__ == "__main__":
     CORPUS_R_DIR = str(resolver.data_clean(corpusR, corpusR.subcorpus))
 
 
-    for seed in [76, 1, 22, 309, 56, 44]:
+    for seed in [44, 1, 22, 309, 56, 44]:
 
         # OUTPUT_DIR = str(resolver.paths.experiments / "teimus" / "classifiers" / f"{corpus.name}" / f"{seed}")
         output_path = resolver.paths.experiments / "teimus" / "classifiers" / f"{corpus.name}" / f"{seed}"
@@ -45,7 +45,7 @@ if __name__ == "__main__":
         df_split.to_csv(output_file, index=False, encoding="utf-8")
 
 
-        for MODE in [ "train" , "eval" , "compare" , "features"]:
+        for MODE in [ "train", "eval", "compare", "features"]:
             # Algoritmo
 
             if MODE.lower() == "compare":
@@ -74,8 +74,7 @@ if __name__ == "__main__":
                     df_prof_dir = CORPUS_P_DIR
                     df_reli_dir = CORPUS_R_DIR
                     # Carpeta donde guardar/cargar el modelo
-
-                    model_dir = rf"{resolver.classifier_dir(corpus)}\teimus\{seed}\{algorithm_name}"
+                    model_dir = resolver.classifier_dir(corpus) / "teimus" / f"{seed}" / f"{algorithm_name}"
                     # Cargamos el dataframe con corpus de training y eval
                     df_split = pd.read_csv(f"{OUTPUT_DIR}\corpus_split.csv")
 
@@ -93,7 +92,7 @@ if __name__ == "__main__":
                         )
                     elif MODE.lower()=="features":
                         df_imp = compute_feature_importance(
-                            model_dir=model_dir,
+                            model_dir=str(model_dir),
                             df_split=df_split,
                             extract_features_musicxml=extract_features_musicxml,
                             method="permutation",
