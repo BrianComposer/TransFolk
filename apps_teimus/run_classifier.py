@@ -28,8 +28,11 @@ if __name__ == "__main__":
 
     for seed in [44, 1, 22, 309, 56, 105]:
 
-        OUTPUT_DIR = str(resolver.paths.experiments / "teimus" / "classifiers" / f"{corpus.name}" / f"{seed}")
+        # OUTPUT_DIR = str(resolver.paths.experiments / "teimus" / "classifiers" / f"{corpus.name}" / f"{seed}")
+        output_path = resolver.paths.experiments / "teimus" / "classifiers" / f"{corpus.name}" / f"{seed}"
+        output_path.mkdir(parents=True, exist_ok=True)
 
+        OUTPUT_DIR = str(output_path)
         # Etiquetamos todas las obras y dividimos el CORPUS TRAIN/EVAL
         df_split = build_split_metadata(
             str(CORPUS_P_DIR),
