@@ -82,11 +82,11 @@ if __name__ == "__main__":
                         train_and_save_model(
                             df_split=df_split,
                             algorithm_id=algorithm_id,
-                            out_dir=model_dir,
+                            out_dir=str(model_dir),
                         )
                     elif MODE.lower() == "eval":
                         load_model_and_evaluate(
-                            model_dir=model_dir,
+                            model_dir=str(model_dir),
                             df_split=df_split,
                             out_csv_path=f"{OUTPUT_DIR}\eval_predictions_{algorithm_name}.csv",
                         )
