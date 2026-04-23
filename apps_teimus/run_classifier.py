@@ -26,7 +26,7 @@ if __name__ == "__main__":
     CORPUS_R_DIR = str(resolver.data_clean(corpusR, corpusR.subcorpus))
 
 
-    for seed in [44, 1, 22, 309, 56, 105]:
+    for seed in [76, 1, 22, 309, 56, 44]:
 
         # OUTPUT_DIR = str(resolver.paths.experiments / "teimus" / "classifiers" / f"{corpus.name}" / f"{seed}")
         output_path = resolver.paths.experiments / "teimus" / "classifiers" / f"{corpus.name}" / f"{seed}"
@@ -75,7 +75,7 @@ if __name__ == "__main__":
                     df_reli_dir = CORPUS_R_DIR
                     # Carpeta donde guardar/cargar el modelo
 
-                    model_dir = rf"{resolver.classifier_dir(corpus)}\teimus\{algorithm_name}"
+                    model_dir = rf"{resolver.classifier_dir(corpus)}\teimus\{seed}\{algorithm_name}"
                     # Cargamos el dataframe con corpus de training y eval
                     df_split = pd.read_csv(f"{OUTPUT_DIR}\corpus_split.csv")
 
