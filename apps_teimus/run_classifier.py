@@ -57,7 +57,7 @@ if __name__ == "__main__":
                 print(results)
             else:
 
-                for algorithm_id in range(1, 9):
+                for algorithm_id in range(1, 1):
                     algorithm_name = ALGORITHM_NAME[algorithm_id]
                     # {
                     #     1: "logistic_regression",
