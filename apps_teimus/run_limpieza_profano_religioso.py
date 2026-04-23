@@ -11,7 +11,7 @@ if __name__ == "__main__":
     registry = ConfigRegistry()
     registry.load_all()
 
-    corpus = registry.find_by_name("arnaudasteruel")
+    corpus = registry.find_by_name("ataa")
     corpusA = Corpus(name=corpus.name, subcorpus="profano", id=None)
     corpusB = Corpus(name=corpus.name, subcorpus="religioso", id=None)
 
