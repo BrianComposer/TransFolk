@@ -26,7 +26,7 @@ if __name__ == "__main__":
     CORPUS_R_DIR = str(resolver.data_clean(corpusR, corpusR.subcorpus))
 
 
-    for seed in [44, 1, 22, 309, 56, 44]:
+    for seed in [17, 1, 22, 309, 56, 44]:
 
         # OUTPUT_DIR = str(resolver.paths.experiments / "teimus" / "classifiers" / f"{corpus.name}" / f"{seed}")
         output_path = resolver.paths.experiments / "teimus" / "classifiers" / f"{corpus.name}" / f"{seed}"
@@ -45,7 +45,7 @@ if __name__ == "__main__":
         df_split.to_csv(output_file, index=False, encoding="utf-8")
 
 
-        for MODE in [ "train", "eval", "compare", "features"]:
+        for MODE in ["train", "eval", "compare", "features"]:
             # Algoritmo
 
             if MODE.lower() == "compare":
@@ -57,7 +57,7 @@ if __name__ == "__main__":
                 print(results)
             else:
 
-                for algorithm_id in range(1, 2):
+                for algorithm_id in range(1, 9):
                     algorithm_name = ALGORITHM_NAME[algorithm_id]
                     # {
                     #     1: "logistic_regression",
@@ -88,7 +88,7 @@ if __name__ == "__main__":
                         load_model_and_evaluate(
                             model_dir=str(model_dir),
                             df_split=df_split,
-                            out_csv_path=f"{OUTPUT_DIR}\eval_predictions_{algorithm_name}.csv",
+                            out_csv_path = rf"{OUTPUT_DIR}\eval_predictions_{algorithm_name}.csv",
                         )
                     elif MODE.lower()=="features":
                         df_imp = compute_feature_importance(
@@ -98,5 +98,5 @@ if __name__ == "__main__":
                             method="permutation",
                             scoring="balanced_accuracy",
                             n_repeats=30,
-                            out_csv_path=f"{OUTPUT_DIR}\feature_importance{algorithm_name}.csv"
+                            out_csv_path = rf"{OUTPUT_DIR}\feature_importance{algorithm_name}.csv"
                         )
