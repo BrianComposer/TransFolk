@@ -1,0 +1,10 @@
+{
+  "algorithm_id": 8,
+  "algorithm_name": "decision_tree",
+  "label_prof": "Profano",
+  "label_reli": "Religioso",
+  "n_train": 634,
+  "n_prof": 347,
+  "n_reli": 287,
+  "n_features": 60
+}

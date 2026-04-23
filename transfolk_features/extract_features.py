@@ -2,15 +2,14 @@
 
 import os
 import glob
-import math
+
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 
-from music21 import converter, stream, note, chord
 
+from music21 import converter, stream, note, chord, meter
 
 
 # =============================
@@ -63,7 +62,7 @@ FEATURE_GROUPS = {
     "Ritmo": [
         "note_density", "mean_dur", "cv_dur", "short_note_ratio",
         "rhythmic_entropy", "npvi_rhythmic",
-        "rhythmic_energy"
+        "rhythmic_energy", "triplet_in_binary_ratio", "dotted_rhythm_ratio",
     ],
     "Métrica y síncopa": [
         "strong_beat_note_ratio", "syncopation_index",
@@ -74,10 +73,17 @@ FEATURE_GROUPS = {
     "Cadencia": [
         "final_tonic_match", "last_note_duration_ratio",
         "last_interval_abs", "last_interval_is_step",
+        "initial_interval_is_6th",
+        "final_leading_tone_appoggiatura",
+        "strong_weak_semitone_resolution_ratio",
     ],
     "Armonía y tonalidad": [
         "diatonic_ratio", "best_corr", "key_clarity",
         "best_key_pc", "best_mode_minor",
+        "chromatic_usage_ratio",
+        "retardo_la_solsharp_ratio",
+        "retardo_si_la_ratio",
+        "minor_leading_to_mediant_ratio",
     ],
     "Intervalos": [
         "mean_abs_semitones", "interval_std", "max_leap",
@@ -97,6 +103,12 @@ FEATURE_GROUPS = {
     ],
     "Estructura temporal": [
         "mean_ioi"
+    ],
+    "Ornamentación": [
+        "grace_note_ratio",
+        "short_ornament_window_ratio",
+        "turn_like_ratio",
+        "appoggiatura_like_ratio",
     ],
 }
 
@@ -227,6 +239,26 @@ FEATURE_TITLES = {
 
     # Forma
     "mean_ioi": "IOI medio",
+    # Ornamentación
+    "grace_note_ratio": "% notas de gracia",
+    "short_ornament_window_ratio": "% ventanas ornamentales breves",
+    "turn_like_ratio": "% grupetos / floreos",
+    "appoggiatura_like_ratio": "% apoyaturas ornamentales",
+
+    # Ritmos específicos
+    "triplet_in_binary_ratio": "% tresillos en entorno binario",
+    "dotted_rhythm_ratio": "% ritmos apuntillados",
+
+    # Rasgos melódico-cadenciales
+    "initial_interval_is_6th": "Inicio con intervalo de sexta (0/1)",
+    "final_leading_tone_appoggiatura": "Apoyatura final de sensible (0/1)",
+    "strong_weak_semitone_resolution_ratio": "% fuerte-débil con resolución por semitono",
+
+    # Cromatismo / giros idiomáticos
+    "chromatic_usage_ratio": "% uso de cromatismos",
+    "retardo_la_solsharp_ratio": "% retardos tipo la/la-sol#",
+    "retardo_si_la_ratio": "% retardos tipo si/si-la",
+    "minor_leading_to_mediant_ratio": "% giro sensible–mediante en menor",
 }
 
 
@@ -635,6 +667,480 @@ def interval_class_features(deltas: np.ndarray) -> Dict[str, float]:
     }
 
 
+
+
+
+# -----------------------------
+# Helpers for idiomatic / local features
+# -----------------------------
+def _safe_pitch_midi(el):
+    if isinstance(el, note.Note):
+        return int(el.pitch.midi)
+    elif isinstance(el, chord.Chord):
+        return int(max(p.midi for p in el.pitches))
+    return None
+
+
+# def _safe_pitch_pc(el):
+#     m = _safe_pitch_midi(el)
+#     return None if m is None else int(m % 12)
+
+
+def _safe_dur_ql(el) -> float:
+    try:
+        return float(getattr(el.duration, "quarterLength", 0.0) or 0.0)
+    except Exception:
+        return 0.0
+
+
+def _safe_beat_strength(el) -> float:
+    try:
+        return float(getattr(el, "beatStrength", np.nan))
+    except Exception:
+        return float("nan")
+
+
+def _iter_note_like_events(part: stream.Part):
+    """
+    Devuelve lista de dicts con notas/acordes (sin rests), incluyendo grace notes
+    cuando existan en el MusicXML.
+    """
+    events = []
+    flat = part.flat
+
+    for el in flat.notesAndRests:
+        if isinstance(el, note.Rest):
+            continue
+        if not isinstance(el, (note.Note, chord.Chord)):
+            continue
+
+        midi = _safe_pitch_midi(el)
+        if midi is None:
+            continue
+
+        dur = _safe_dur_ql(el)
+
+        is_grace = False
+        try:
+            is_grace = bool(getattr(el.duration, "isGrace", False))
+        except Exception:
+            pass
+
+        # En algunas exportaciones las grace van con ql=0
+        events.append({
+            "el": el,
+            "offset": float(getattr(el, "offset", 0.0) or 0.0),
+            "dur": dur,
+            "midi": int(midi),
+            "pc": int(midi % 12),
+            "beatStrength": _safe_beat_strength(el),
+            "is_grace": is_grace or dur == 0.0,
+        })
+
+    events.sort(key=lambda x: x["offset"])
+    return events
+
+
+def _get_measure_time_signature(meas) -> Optional[meter.TimeSignature]:
+    try:
+        ts = meas.timeSignature
+        if ts is not None:
+            return ts
+    except Exception:
+        pass
+
+    try:
+        ctx = meas.getContextByClass(meter.TimeSignature)
+        if ctx is not None:
+            return ctx
+    except Exception:
+        pass
+
+    return None
+
+
+# def _is_binary_metric(ts: Optional[meter.TimeSignature]) -> bool:
+#     """
+#     Proxy sencillo para 'entorno binario':
+#     - 2/4, 4/4, 2/2, 4/2, etc.
+#     - excluye compases compuestos típicos 6/8, 9/8, 12/8
+#     """
+#     if ts is None:
+#         return False
+#     try:
+#         num = int(ts.numerator)
+#         den = int(ts.denominator)
+#     except Exception:
+#         return False
+#
+#     if den not in (2, 4, 8, 16):
+#         return False
+#
+#     if num in (6, 9, 12):
+#         return False
+#
+#     return True
+def _is_binary_metric(ts: Optional[meter.TimeSignature]) -> bool:
+    """
+    Proxy sencillo para 'entorno binario':
+    acepta compases de subdivisión binaria y pulso binario/simple,
+    excluyendo ternarios simples y compuestos típicos.
+    """
+    if ts is None:
+        return False
+    try:
+        num = int(ts.numerator)
+        den = int(ts.denominator)
+    except Exception:
+        return False
+
+    # excluye ternarios simples y compuestos típicos
+    if (num, den) in [(3, 4), (3, 8), (6, 8), (9, 8), (12, 8)]:
+        return False
+
+    # acepta contextos típicamente binarios
+    if (num, den) in [(2, 2), (2, 4), (4, 4), (2, 8), (4, 8), (2, 16), (4, 16)]:
+        return True
+
+    # fallback razonable
+    return num % 2 == 0 and num not in (6, 12)
+
+
+# -----------------------------
+# Ornamentation features
+# -----------------------------
+def ornamentation_features(part: stream.Part) -> Dict[str, float]:
+    """
+    Proxies para:
+    - notas de gracia
+    - floreos / adornos breves locales
+    - grupetos
+    - apoyaturas ornamentales explícitas
+    """
+    events = _iter_note_like_events(part)
+    note_events = [e for e in events if e["midi"] is not None]
+
+    if len(note_events) < 2:
+        return {
+            "grace_note_ratio": 0.0,
+            "short_ornament_window_ratio": 0.0,
+            "turn_like_ratio": 0.0,
+            "appoggiatura_like_ratio": 0.0,
+        }
+
+    n = float(len(note_events))
+
+    # 1) notas de gracia
+    grace_count = sum(1 for e in note_events if e["is_grace"])
+    grace_note_ratio = float(grace_count / n)
+
+    # Para el resto ignoramos grace explícitas y usamos notas "reales"
+    core = [e for e in note_events if not e["is_grace"]]
+    if len(core) < 3:
+        return {
+            "grace_note_ratio": grace_note_ratio,
+            "short_ornament_window_ratio": 0.0,
+            "turn_like_ratio": 0.0,
+            "appoggiatura_like_ratio": 0.0,
+        }
+
+    core_durs = np.array([e["dur"] for e in core], dtype=float)
+    core_midis = np.array([e["midi"] for e in core], dtype=int)
+    core_bs = np.array([e["beatStrength"] for e in core], dtype=float)
+
+    valid_durs = core_durs[core_durs > 0]
+    local_short_thr = min(SHORT_DUR_THRESHOLD_QL, float(np.median(valid_durs)) if len(valid_durs) else SHORT_DUR_THRESHOLD_QL)
+
+    short_orn_windows = 0
+    turn_like = 0
+    appoggiatura_like = 0
+    total_w3 = max(0, len(core) - 2)
+
+    for i in range(total_w3):
+        d = core_durs[i:i+3]
+        p = core_midis[i:i+3]
+        b = core_bs[i:i+3]
+
+        ints = np.diff(p)
+        abs_ints = np.abs(ints)
+
+        # floreo / adorno breve local: tres notas breves y móviles
+        if np.all(d <= local_short_thr) and np.all(abs_ints <= 2) and np.any(abs_ints > 0):
+            short_orn_windows += 1
+
+        # grupeto / turn-like:
+        # patrón alrededor de una nota central: arriba-abajo o abajo-arriba, pasos pequeños
+        if len(ints) == 2:
+            if abs_ints[0] <= 2 and abs_ints[1] <= 2 and np.sign(ints[0]) == -np.sign(ints[1]) and np.sign(ints[0]) != 0:
+                turn_like += 1
+
+        # apoyatura ornamental:
+        # nota fuerte no acorde/contextual inmediato que resuelve por paso a nota débil
+        # proxy: primera nota fuerte, más larga/igual que la siguiente, resolución por semitono o tono
+        if np.isfinite(b[0]) and np.isfinite(b[1]):
+            if b[0] >= STRONG_BEAT_THRESHOLD and b[1] <= WEAK_BEAT_THRESHOLD:
+                if abs(p[1] - p[0]) in (1, 2) and d[0] >= d[1]:
+                    appoggiatura_like += 1
+
+    denom_w3 = float(total_w3) if total_w3 > 0 else 1.0
+
+    return {
+        "grace_note_ratio": grace_note_ratio,
+        "short_ornament_window_ratio": float(short_orn_windows / denom_w3),
+        "turn_like_ratio": float(turn_like / denom_w3),
+        "appoggiatura_like_ratio": float(appoggiatura_like / denom_w3),
+    }
+
+
+# -----------------------------
+# Rhythmic idioms
+# -----------------------------
+def triplet_binary_features(part: stream.Part) -> Dict[str, float]:
+    """
+    Detecta tuplet/triplet en compases binarios.
+    """
+    note_count_binary = 0
+    triplet_count_binary = 0
+
+    try:
+        measures = list(part.recurse().getElementsByClass(stream.Measure))
+    except Exception:
+        measures = []
+
+    if not measures:
+        return {"triplet_in_binary_ratio": 0.0}
+
+    for meas in measures:
+        ts = _get_measure_time_signature(meas)
+        if not _is_binary_metric(ts):
+            continue
+
+        for el in meas.flat.notesAndRests:
+            if isinstance(el, note.Rest):
+                continue
+            if not isinstance(el, (note.Note, chord.Chord)):
+                continue
+
+            note_count_binary += 1
+
+            is_triplet = False
+            try:
+                for tup in getattr(el.duration, "tuplets", []):
+                    if getattr(tup, "numberNotesActual", None) == 3:
+                        is_triplet = True
+                        break
+            except Exception:
+                pass
+
+            # fallback aproximado por duraciones típicas de tresillo
+            if not is_triplet:
+                ql = _safe_dur_ql(el)
+                # valores habituales: 1/3, 2/3, 1/6, 4/3, etc.
+                cand = [1/6, 1/3, 2/3, 4/3]
+                if any(abs(ql - c) < 0.02 for c in cand):
+                    is_triplet = True
+
+            if is_triplet:
+                triplet_count_binary += 1
+
+    ratio = float(triplet_count_binary / note_count_binary) if note_count_binary > 0 else 0.0
+    return {"triplet_in_binary_ratio": ratio}
+
+
+def dotted_rhythm_features(durs: np.ndarray) -> Dict[str, float]:
+    """
+    Detecta ritmos apuntillados típicos:
+    relación aproximada 3:1 o 1:3 entre duraciones consecutivas.
+    """
+    if len(durs) < 2:
+        return {"dotted_rhythm_ratio": 0.0}
+
+    count = 0
+    total = 0
+
+    for d1, d2 in zip(durs[:-1], durs[1:]):
+        if d1 <= 0 or d2 <= 0:
+            continue
+        total += 1
+        r = d1 / d2
+        if abs(r - 3.0) / 3.0 < 0.12 or abs(r - (1/3)) / (1/3) < 0.12:
+            count += 1
+
+    return {"dotted_rhythm_ratio": float(count / total) if total > 0 else 0.0}
+
+
+# -----------------------------
+# Melodic idioms and cadential figures
+# -----------------------------
+def initial_sixth_feature(midis: np.ndarray) -> Dict[str, float]:
+    if len(midis) < 2:
+        return {"initial_interval_is_6th": 0.0}
+
+    first_int = abs(int(midis[1]) - int(midis[0]))
+    return {"initial_interval_is_6th": float(1.0 if first_int in (8, 9) else 0.0)}
+
+
+def final_leading_tone_appoggiatura_feature(midis: np.ndarray,
+                                            beatStrengths: np.ndarray,
+                                            tonic_pc: float) -> Dict[str, float]:
+    """
+    Apoyatura de sensible al final de frase/pieza:
+    proxy robusto sobre las últimas 4 notas de la melodía.
+    """
+    if len(midis) < 2 or not np.isfinite(tonic_pc):
+        return {"final_leading_tone_appoggiatura": 0.0}
+
+    tonic_pc = int(tonic_pc) % 12
+    leading_pc = (tonic_pc - 1) % 12
+
+    start = max(0, len(midis) - 4)
+    found = 0.0
+
+    for i in range(start, len(midis) - 1):
+        pc1 = int(midis[i] % 12)
+        pc2 = int(midis[i + 1] % 12)
+        semitone_res = abs(int(midis[i + 1]) - int(midis[i])) == 1
+        strong = np.isfinite(beatStrengths[i]) and beatStrengths[i] >= STRONG_BEAT_THRESHOLD
+
+        if pc1 == leading_pc and pc2 == tonic_pc and semitone_res and strong:
+            found = 1.0
+            break
+
+    return {"final_leading_tone_appoggiatura": found}
+
+
+def strong_weak_semitone_resolution_feature(midis: np.ndarray,
+                                            beatStrengths: np.ndarray) -> Dict[str, float]:
+    """
+    Parte fuerte -> parte débil con resolución por semitono.
+    """
+    if len(midis) < 2:
+        return {"strong_weak_semitone_resolution_ratio": 0.0}
+
+    count = 0
+    total = 0
+
+    for i in range(len(midis) - 1):
+        b1 = beatStrengths[i]
+        b2 = beatStrengths[i + 1]
+        if not (np.isfinite(b1) and np.isfinite(b2)):
+            continue
+        total += 1
+        if b1 >= STRONG_BEAT_THRESHOLD and b2 <= WEAK_BEAT_THRESHOLD:
+            if abs(int(midis[i + 1]) - int(midis[i])) == 1:
+                count += 1
+
+    return {
+        "strong_weak_semitone_resolution_ratio": float(count / total) if total > 0 else 0.0
+    }
+
+
+# -----------------------------
+# Chromatic / tonal idioms
+# -----------------------------
+def chromatic_features(midis: np.ndarray,
+                       durs: np.ndarray,
+                       melodic_stream: stream.Stream) -> Dict[str, float]:
+    """
+    % de notas no diatónicas respecto a la escala estimada.
+    """
+    try:
+        k = melodic_stream.analyze("key")
+        scale = k.getScale()
+        scale_pcs = {p.pitchClass for p in scale.pitches}
+    except Exception:
+        return {"chromatic_usage_ratio": float("nan")}
+
+    if len(midis) == 0 or len(durs) == 0:
+        return {"chromatic_usage_ratio": 0.0}
+
+    pcs = np.mod(midis, 12).astype(int)
+    w = durs.astype(float)
+    total_w = float(np.sum(w))
+    if total_w <= 0:
+        return {"chromatic_usage_ratio": 0.0}
+
+    chrom_w = float(np.sum([ww for pc, ww in zip(pcs, w) if int(pc) not in scale_pcs]))
+    return {"chromatic_usage_ratio": float(chrom_w / total_w)}
+
+
+def retardo_tonal_features(midis: np.ndarray,
+                           tonic_pc: float) -> Dict[str, float]:
+    """
+    Retardos tipo:
+    - la / la-sol#  => tónica -> sensible inferior (descenso cromático)
+    - si / si-la    => supertónica -> tónica
+    Generalizados a la tonalidad estimada.
+    """
+    if len(midis) < 2 or not np.isfinite(tonic_pc):
+        return {
+            "retardo_la_solsharp_ratio": 0.0,
+            "retardo_si_la_ratio": 0.0,
+        }
+
+    tonic_pc = int(tonic_pc) % 12
+    leading_pc = (tonic_pc - 1) % 12
+    supertonic_pc = (tonic_pc + 2) % 12
+
+    pcs = np.mod(midis, 12).astype(int)
+
+    la_solsharp = 0
+    si_la = 0
+    total = len(pcs) - 1
+
+    for a, b, ma, mb in zip(pcs[:-1], pcs[1:], midis[:-1], midis[1:]):
+        # tónica -> sensible inferior, descenso de semitono
+        if a == tonic_pc and b == leading_pc and (int(mb) - int(ma) == -1):
+            la_solsharp += 1
+
+        # supertónica -> tónica, descenso
+        if a == supertonic_pc and b == tonic_pc and (int(mb) < int(ma)):
+            si_la += 1
+
+    denom = float(total) if total > 0 else 1.0
+    return {
+        "retardo_la_solsharp_ratio": float(la_solsharp / denom),
+        "retardo_si_la_ratio": float(si_la / denom),
+    }
+
+
+def minor_leading_to_mediant_feature(midis: np.ndarray,
+                                     tonic_pc: float,
+                                     mode_minor: float) -> Dict[str, float]:
+    """
+    Giro sensible–mediante en menor:
+    sol#-la-si-do en A menor,
+    generalizado como:
+    sensible -> tónica -> supertónica -> mediante
+    """
+    if len(midis) < 4 or not np.isfinite(tonic_pc) or not np.isfinite(mode_minor) or int(mode_minor) != 1:
+        return {"minor_leading_to_mediant_ratio": 0.0}
+
+    tonic_pc = int(tonic_pc) % 12
+    leading_pc = (tonic_pc - 1) % 12
+    supertonic_pc = (tonic_pc + 2) % 12
+    mediant_pc = (tonic_pc + 3) % 12  # tercera menor
+
+    pcs = np.mod(midis, 12).astype(int)
+
+    count = 0
+    total = len(pcs) - 3
+
+    for i in range(total):
+        w = pcs[i:i+4]
+        if list(w) == [leading_pc, tonic_pc, supertonic_pc, mediant_pc]:
+            count += 1
+
+    denom = float(total) if total > 0 else 1.0
+    return {"minor_leading_to_mediant_ratio": float(count / denom)}
+
+
+
+
+
+
+
+
 # -----------------------------
 # Feature extraction per file
 # -----------------------------
@@ -654,11 +1160,32 @@ def extract_features_musicxml(path: str) -> Optional[Dict[str, float]]:
     deltas = np.diff(midis).astype(int)
     abs_d = np.abs(deltas)
 
+    # tonal = estimate_key_music21(part.flat, midis, durs)
+    # cad = cadential_features(midis, durs, tonic_pc=tonal["best_key_pc"])
+    # pdist = pitch_distribution_features(midis, durs)
+    # rhy = rhythm_features(onsets, durs, beatStrengths)
+    # iclass = interval_class_features(deltas)
+
     tonal = estimate_key_music21(part.flat, midis, durs)
     cad = cadential_features(midis, durs, tonic_pc=tonal["best_key_pc"])
     pdist = pitch_distribution_features(midis, durs)
     rhy = rhythm_features(onsets, durs, beatStrengths)
     iclass = interval_class_features(deltas)
+
+    # Nuevas features idiomáticas
+    orn = ornamentation_features(part)
+    trip = triplet_binary_features(part)
+    dotr = dotted_rhythm_features(durs)
+    init6 = initial_sixth_feature(midis)
+    final_app = final_leading_tone_appoggiatura_feature(
+        midis, beatStrengths, tonal["best_key_pc"]
+    )
+    swsemi = strong_weak_semitone_resolution_feature(midis, beatStrengths)
+    chrom = chromatic_features(midis, durs, part.flat)
+    ret = retardo_tonal_features(midis, tonal["best_key_pc"])
+    ltm = minor_leading_to_mediant_feature(
+        midis, tonal["best_key_pc"], tonal["best_mode_minor"]
+    )
 
     mean_abs_semitones = safe_mean(abs_d)
     max_leap = safe_max(abs_d)
@@ -687,6 +1214,64 @@ def extract_features_musicxml(path: str) -> Optional[Dict[str, float]]:
     renergy = rhythmic_energy_feature(rhy["note_density"], rhy["mean_dur"])
     ######
 
+    # return {
+    #     # Ritmo
+    #     "note_density": rhy["note_density"],
+    #     "mean_dur": rhy["mean_dur"],
+    #     "cv_dur": rhy["cv_dur"],
+    #     "short_note_ratio": rhy["short_note_ratio"],
+    #     "rhythmic_entropy": rhy["rhythmic_entropy"],
+    #     "npvi_rhythmic": rhy["npvi_rhythmic"],
+    #
+    #     # Métrica / síncopa
+    #     "strong_beat_note_ratio": rhy["strong_beat_note_ratio"],
+    #     "syncopation_index": rhy["syncopation_index"],
+    #
+    #     # Pitch (distribución)
+    #     "reciting_pitch_ratio": pdist["reciting_pitch_ratio"],
+    #     "pitch_entropy": pdist["pitch_entropy"],
+    #
+    #     # Cadencia
+    #     "final_tonic_match": cad["final_tonic_match"],
+    #     "last_note_duration_ratio": cad["last_note_duration_ratio"],
+    #     "last_interval_abs": cad["last_interval_abs"],
+    #     "last_interval_is_step": cad["last_interval_is_step"],
+    #
+    #     # Armonía / tonalidad
+    #     "diatonic_ratio": tonal["diatonic_ratio"],
+    #     "best_corr": tonal["best_corr"],
+    #     "key_clarity": tonal["key_clarity"],
+    #     "best_key_pc": tonal["best_key_pc"],
+    #     "best_mode_minor": tonal["best_mode_minor"],
+    #
+    #     # Intervalos cuantitativos
+    #     "mean_abs_semitones": mean_abs_semitones,
+    #     "max_leap": max_leap,
+    #     "step_ratio": step_ratio,
+    #     "unison_ratio": unison_ratio,
+    #
+    #     # Intervalos cualitativos (proxy)
+    #     **iclass,
+    #
+    #     # Rango / propincuidad
+    #     "range_semitones": range_semitones,
+    #     "range_p95": range_p95,
+    #     "proximity_step_le2": proximity_step_le2,
+    #     "proximity_inv_mean": proximity_inv_mean,
+    #
+    #     # Contorno / dirección
+    #     "up_ratio": up_ratio,
+    #     "down_ratio": down_ratio,
+    #     "stay_ratio": stay_ratio,
+    #     "num_direction_changes": num_dir_changes,
+    #     "climax_pos": climax_pos,
+    #     "direction_balance": direction_balance,
+    #     "pitch_time_slope": pitch_time_slope,
+    #     #**ivar,
+    #     #**rrange,
+    #     #**phr,
+    #     #**renergy,
+    # }
     return {
         # Ritmo
         "note_density": rhy["note_density"],
@@ -695,10 +1280,18 @@ def extract_features_musicxml(path: str) -> Optional[Dict[str, float]]:
         "short_note_ratio": rhy["short_note_ratio"],
         "rhythmic_entropy": rhy["rhythmic_entropy"],
         "npvi_rhythmic": rhy["npvi_rhythmic"],
+        "triplet_in_binary_ratio": trip["triplet_in_binary_ratio"],
+        "dotted_rhythm_ratio": dotr["dotted_rhythm_ratio"],
 
         # Métrica / síncopa
         "strong_beat_note_ratio": rhy["strong_beat_note_ratio"],
         "syncopation_index": rhy["syncopation_index"],
+
+        # Ornamentación
+        "grace_note_ratio": orn["grace_note_ratio"],
+        "short_ornament_window_ratio": orn["short_ornament_window_ratio"],
+        "turn_like_ratio": orn["turn_like_ratio"],
+        "appoggiatura_like_ratio": orn["appoggiatura_like_ratio"],
 
         # Pitch (distribución)
         "reciting_pitch_ratio": pdist["reciting_pitch_ratio"],
@@ -709,6 +1302,9 @@ def extract_features_musicxml(path: str) -> Optional[Dict[str, float]]:
         "last_note_duration_ratio": cad["last_note_duration_ratio"],
         "last_interval_abs": cad["last_interval_abs"],
         "last_interval_is_step": cad["last_interval_is_step"],
+        "initial_interval_is_6th": init6["initial_interval_is_6th"],
+        "final_leading_tone_appoggiatura": final_app["final_leading_tone_appoggiatura"],
+        "strong_weak_semitone_resolution_ratio": swsemi["strong_weak_semitone_resolution_ratio"],
 
         # Armonía / tonalidad
         "diatonic_ratio": tonal["diatonic_ratio"],
@@ -716,6 +1312,10 @@ def extract_features_musicxml(path: str) -> Optional[Dict[str, float]]:
         "key_clarity": tonal["key_clarity"],
         "best_key_pc": tonal["best_key_pc"],
         "best_mode_minor": tonal["best_mode_minor"],
+        "chromatic_usage_ratio": chrom["chromatic_usage_ratio"],
+        "retardo_la_solsharp_ratio": ret["retardo_la_solsharp_ratio"],
+        "retardo_si_la_ratio": ret["retardo_si_la_ratio"],
+        "minor_leading_to_mediant_ratio": ltm["minor_leading_to_mediant_ratio"],
 
         # Intervalos cuantitativos
         "mean_abs_semitones": mean_abs_semitones,
@@ -740,10 +1340,12 @@ def extract_features_musicxml(path: str) -> Optional[Dict[str, float]]:
         "climax_pos": climax_pos,
         "direction_balance": direction_balance,
         "pitch_time_slope": pitch_time_slope,
-        #**ivar,
-        #**rrange,
-        #**phr,
-        #**renergy,
+
+        #otras
+        "rhythmic_energy": renergy["rhythmic_energy"],
+        "interval_std": ivar["interval_std"],
+        "range_relative": rrange["range_relative"],
+        "mean_ioi": phr["mean_ioi"],
     }
 
 
