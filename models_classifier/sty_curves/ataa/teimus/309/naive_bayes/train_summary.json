@@ -1,0 +1,10 @@
+{
+  "algorithm_id": 7,
+  "algorithm_name": "naive_bayes",
+  "label_prof": "Profano",
+  "label_reli": "Religioso",
+  "n_train": 634,
+  "n_prof": 347,
+  "n_reli": 287,
+  "n_features": 60
+}
