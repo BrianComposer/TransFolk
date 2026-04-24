@@ -5,11 +5,34 @@ from apps.db.config_registry import ConfigRegistry
 from transfolk_classifier.classifier import train_and_save_model, load_model_and_evaluate, ALGORITHM_NAME
 from transfolk_classifier.evaluate_models import evaluate_all_models
 from transfolk_features.extract_features import extract_features_musicxml
-from transfolk_classifier.feature_importance  import compute_feature_importance
+from transfolk_classifier.feature_importance import compute_feature_importance
 from transfolk_classifier.build_corpus_split import build_split_metadata
+from transfolk_classifier.classifier_curves import generate_plots_for_algorithms
+
+
+def _parse_algorithm_ids(argv):
+    """
+    Optional CLI usage:
+        python -m apps_teimus.run_classifier <root> 3
+        python -m apps_teimus.run_classifier <root> 1,3,5
+        python -m apps_teimus.run_classifier <root> all
+
+    If omitted, all classifiers are processed.
+    """
+    if len(argv) <= 2 or str(argv[2]).lower() == "all":
+        return list(ALGORITHM_NAME.keys())
+
+    raw = str(argv[2]).strip()
+    ids = [int(x.strip()) for x in raw.split(",") if x.strip()]
+    invalid = [x for x in ids if x not in ALGORITHM_NAME]
+    if invalid:
+        raise ValueError(f"algorithm_id inválido: {invalid}. Debe estar entre 1 y 8.")
+    return ids
+
 
 if __name__ == "__main__":
     ruta_base = sys.argv[1] if len(sys.argv) > 1 else None
+    algorithm_ids = _parse_algorithm_ids(sys.argv)
 
     settings = Settings(ruta_base)
     paths = ProjectPaths(settings.root)
@@ -20,83 +43,185 @@ if __name__ == "__main__":
     corpus = registry.find_by_name("ataa")
     corpusP = Corpus(name=corpus.name, subcorpus="profano", id=None)
     corpusR = Corpus(name=corpus.name, subcorpus="religioso", id=None)
-    corpusE = Corpus(name=corpus.name, subcorpus="eval", id=None)
 
     CORPUS_P_DIR = str(resolver.data_clean(corpusP, corpusP.subcorpus))
     CORPUS_R_DIR = str(resolver.data_clean(corpusR, corpusR.subcorpus))
 
+    # Puedes cambiar esta lista de semillas sin tocar el módulo de gráficas.
+    seeds = [17, 1, 22, 309, 56, 44]
 
-    for seed in [17, 1, 22, 309, 56, 44]:
+    # Modos del pipeline. "curves" se ejecuta después de "eval" porque usa eval_predictions_<modelo>.csv.
+    modes = ["train", "eval", "compare", "features", "curves"]
 
-        # OUTPUT_DIR = str(resolver.paths.experiments / "teimus" / "classifiers" / f"{corpus.name}" / f"{seed}")
+    for seed in seeds:
         output_path = resolver.paths.experiments / "teimus" / "classifiers" / f"{corpus.name}" / f"{seed}"
         output_path.mkdir(parents=True, exist_ok=True)
-
         OUTPUT_DIR = str(output_path)
-        # Etiquetamos todas las obras y dividimos el CORPUS TRAIN/EVAL
+
+        # Etiquetamos todas las obras y dividimos el corpus TRAIN/EVAL.
         df_split = build_split_metadata(
             str(CORPUS_P_DIR),
             str(CORPUS_R_DIR),
             test_size=0.20,
-            random_state=seed
+            random_state=seed,
         )
 
-        output_file = f"{OUTPUT_DIR}\corpus_split.csv"
+        output_file = output_path / "corpus_split.csv"
         df_split.to_csv(output_file, index=False, encoding="utf-8")
 
-
-        for MODE in ["train", "eval", "compare", "features"]:
-            # Algoritmo
-
+        for MODE in ["curves"]:
             if MODE.lower() == "compare":
                 results = evaluate_all_models(
                     results_dir=OUTPUT_DIR,
-                    out_csv="model_comparison.csv"
+                    out_csv="model_comparison.csv",
                 )
                 print("\nResultados finales:")
                 print(results)
-            else:
+                continue
 
-                for algorithm_id in range(1, 9):
-                    algorithm_name = ALGORITHM_NAME[algorithm_id]
-                    # {
-                    #     1: "logistic_regression",
-                    #     2: "svm_linear_calibrated",
-                    #     3: "gradient_boosting",
-                    #     4: "random_forest",
-                    #     5: "hist_gradient_boosting",
-                    #     6: "knn",
-                    #     7: "naive_bayes",
-                    #     8: "decision_tree"
-                    # }
+            if MODE.lower() == "curves":
+                selected_algorithm_names = [ALGORITHM_NAME[i] for i in algorithm_ids]
+                generate_plots_for_algorithms(
+                    results_dir=OUTPUT_DIR,
+                    algorithm_names=selected_algorithm_names,
+                    style="tableau-colorblind10",  # cambia a "petroff10" si prefieres esa paleta
+                    show=False,
+                )
+                continue
 
-                    # --- Rutas ---
-                    df_prof_dir = CORPUS_P_DIR
-                    df_reli_dir = CORPUS_R_DIR
-                    # Carpeta donde guardar/cargar el modelo
-                    model_dir = resolver.classifier_dir(corpus) / "teimus" / f"{seed}" / f"{algorithm_name}"
-                    # Cargamos el dataframe con corpus de training y eval
-                    df_split = pd.read_csv(f"{OUTPUT_DIR}\corpus_split.csv")
+            for algorithm_id in algorithm_ids:
+                algorithm_name = ALGORITHM_NAME[algorithm_id]
 
-                    if MODE.lower() == "train":
-                        train_and_save_model(
-                            df_split=df_split,
-                            algorithm_id=algorithm_id,
-                            out_dir=str(model_dir),
-                        )
-                    elif MODE.lower() == "eval":
-                        load_model_and_evaluate(
-                            model_dir=str(model_dir),
-                            df_split=df_split,
-                            out_csv_path = rf"{OUTPUT_DIR}\eval_predictions_{algorithm_name}.csv",
-                        )
-                    elif MODE.lower()=="features":
-                        df_imp = compute_feature_importance(
-                            model_dir=str(model_dir),
-                            df_split=df_split,
-                            extract_features_musicxml=extract_features_musicxml,
-                            method="permutation",
-                            scoring="balanced_accuracy",
-                            n_repeats=30,
-                            out_csv_path = rf"{OUTPUT_DIR}\feature_importance{algorithm_name}.csv"
-                        )
+                model_dir = resolver.classifier_dir(corpus) / "teimus" / f"{seed}" / f"{algorithm_name}"
+                df_split = pd.read_csv(output_path / "corpus_split.csv")
+
+                if MODE.lower() == "train":
+                    train_and_save_model(
+                        df_split=df_split,
+                        algorithm_id=algorithm_id,
+                        out_dir=str(model_dir),
+                    )
+
+                elif MODE.lower() == "eval":
+                    load_model_and_evaluate(
+                        model_dir=str(model_dir),
+                        df_split=df_split,
+                        out_csv_path=str(output_path / f"eval_predictions_{algorithm_name}.csv"),
+                    )
+
+                elif MODE.lower() == "features":
+                    compute_feature_importance(
+                        model_dir=str(model_dir),
+                        df_split=df_split,
+                        extract_features_musicxml=extract_features_musicxml,
+                        method="permutation",
+                        scoring="balanced_accuracy",
+                        n_repeats=30,
+                        out_csv_path=str(output_path / f"feature_importance_{algorithm_name}.csv"),
+                    )
+
+
+
+
+# import sys
+# import pandas as pd
+# from transfolk_config import *
+# from apps.db.config_registry import ConfigRegistry
+# from transfolk_classifier.classifier import train_and_save_model, load_model_and_evaluate, ALGORITHM_NAME
+# from transfolk_classifier.evaluate_models import evaluate_all_models
+# from transfolk_features.extract_features import extract_features_musicxml
+# from transfolk_classifier.feature_importance  import compute_feature_importance
+# from transfolk_classifier.build_corpus_split import build_split_metadata
+#
+# if __name__ == "__main__":
+#     ruta_base = sys.argv[1] if len(sys.argv) > 1 else None
+#
+#     settings = Settings(ruta_base)
+#     paths = ProjectPaths(settings.root)
+#     resolver = PathResolver(paths)
+#     registry = ConfigRegistry()
+#     registry.load_all()
+#
+#     corpus = registry.find_by_name("ataa")
+#     corpusP = Corpus(name=corpus.name, subcorpus="profano", id=None)
+#     corpusR = Corpus(name=corpus.name, subcorpus="religioso", id=None)
+#     corpusE = Corpus(name=corpus.name, subcorpus="eval", id=None)
+#
+#     CORPUS_P_DIR = str(resolver.data_clean(corpusP, corpusP.subcorpus))
+#     CORPUS_R_DIR = str(resolver.data_clean(corpusR, corpusR.subcorpus))
+#
+#
+#     for seed in [17, 1, 22, 309, 56, 44]:
+#
+#         # OUTPUT_DIR = str(resolver.paths.experiments / "teimus" / "classifiers" / f"{corpus.name}" / f"{seed}")
+#         output_path = resolver.paths.experiments / "teimus" / "classifiers" / f"{corpus.name}" / f"{seed}"
+#         output_path.mkdir(parents=True, exist_ok=True)
+#
+#         OUTPUT_DIR = str(output_path)
+#         # Etiquetamos todas las obras y dividimos el CORPUS TRAIN/EVAL
+#         df_split = build_split_metadata(
+#             str(CORPUS_P_DIR),
+#             str(CORPUS_R_DIR),
+#             test_size=0.20,
+#             random_state=seed
+#         )
+#
+#         output_file = f"{OUTPUT_DIR}\corpus_split.csv"
+#         df_split.to_csv(output_file, index=False, encoding="utf-8")
+#
+#
+#         for MODE in ["train", "eval", "compare", "features"]:
+#             # Algoritmo
+#
+#             if MODE.lower() == "compare":
+#                 results = evaluate_all_models(
+#                     results_dir=OUTPUT_DIR,
+#                     out_csv="model_comparison.csv"
+#                 )
+#                 print("\nResultados finales:")
+#                 print(results)
+#             else:
+#
+#                 for algorithm_id in range(1, 9):
+#                     algorithm_name = ALGORITHM_NAME[algorithm_id]
+#                     # {
+#                     #     1: "logistic_regression",
+#                     #     2: "svm_linear_calibrated",
+#                     #     3: "gradient_boosting",
+#                     #     4: "random_forest",
+#                     #     5: "hist_gradient_boosting",
+#                     #     6: "knn",
+#                     #     7: "naive_bayes",
+#                     #     8: "decision_tree"
+#                     # }
+#
+#                     # --- Rutas ---
+#                     df_prof_dir = CORPUS_P_DIR
+#                     df_reli_dir = CORPUS_R_DIR
+#                     # Carpeta donde guardar/cargar el modelo
+#                     model_dir = resolver.classifier_dir(corpus) / "teimus" / f"{seed}" / f"{algorithm_name}"
+#                     # Cargamos el dataframe con corpus de training y eval
+#                     df_split = pd.read_csv(f"{OUTPUT_DIR}\corpus_split.csv")
+#
+#                     if MODE.lower() == "train":
+#                         train_and_save_model(
+#                             df_split=df_split,
+#                             algorithm_id=algorithm_id,
+#                             out_dir=str(model_dir),
+#                         )
+#                     elif MODE.lower() == "eval":
+#                         load_model_and_evaluate(
+#                             model_dir=str(model_dir),
+#                             df_split=df_split,
+#                             out_csv_path = rf"{OUTPUT_DIR}\eval_predictions_{algorithm_name}.csv",
+#                         )
+#                     elif MODE.lower()=="features":
+#                         df_imp = compute_feature_importance(
+#                             model_dir=str(model_dir),
+#                             df_split=df_split,
+#                             extract_features_musicxml=extract_features_musicxml,
+#                             method="permutation",
+#                             scoring="balanced_accuracy",
+#                             n_repeats=30,
+#                             out_csv_path = rf"{OUTPUT_DIR}\feature_importance{algorithm_name}.csv"
+#                         )
