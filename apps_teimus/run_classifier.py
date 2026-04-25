@@ -33,7 +33,7 @@ def _parse_algorithm_ids(argv):
 
 
 def _parse_modes(argv):
-    default_modes = ["train", "eval", "compare", "features", "curves", "ablation", "interpretability"]
+    default_modes = [ "train", "eval", "compare", "features", "curves", "ablation", "interpretability"]
     if len(argv) <= 3:
         return default_modes
 
@@ -811,4 +811,4 @@ if __name__ == "__main__":
 #                             scoring="balanced_accuracy",
 #                             n_repeats=30,
 #                             out_csv_path = rf"{OUTPUT_DIR}\feature_importance{algorithm_name}.csv"
-#                         )
+#                  
