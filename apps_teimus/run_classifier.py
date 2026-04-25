@@ -77,7 +77,7 @@ def _parse_modes(argv):
 
 
 #ejemplo de uso por consola
-# python -m apps_teimus.run_classifier <root> all distributions
+# python -m apps_teimus.run_classifier . all distributions
 
 if __name__ == "__main__":
     ruta_base = sys.argv[1] if len(sys.argv) > 1 else None
