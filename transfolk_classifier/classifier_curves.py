@@ -13,9 +13,13 @@ therefore it does not re-extract MusicXML features. It expects, at minimum:
     - score_profano
     - algorithm_name, optional but recommended
 
-Positive class convention:
-    Profano = 1
+Class convention in the trained classifier:
+    Profano   = 1
     Religioso = 0
+
+This module reports both one-vs-rest positive-class views:
+    - *_profano.*    uses score_profano and y_true == 1
+    - *_religioso.* uses 1 - score_profano and y_true == 0
 """
 
 from __future__ import annotations
@@ -49,8 +53,8 @@ from sklearn.metrics import (
 class CurvePlotConfig:
     """Styling options for publication-quality classifier figures."""
 
-    style: str = "tableau-colorblind10"  # "tableau-colorblind10" or "petroff10"
-    font_family: str = "DejaVu Serif"    # portable serif; change to Times New Roman if installed
+    style: str = "tableau-colorblind10"
+    font_family: str = "DejaVu Serif"
     base_font_size: int = 11
     label_font_size: int = 12
     title_font_size: int = 12
@@ -62,6 +66,32 @@ class CurvePlotConfig:
     save_eps: bool = True
     show: bool = False
 
+
+@dataclass(frozen=True)
+class PositiveClassConfig:
+    suffix: str
+    display_name: str
+    positive_label_id: int
+    score_column: str
+    score_from_profano: bool = False
+
+
+POSITIVE_CLASS_CONFIGS: Dict[str, PositiveClassConfig] = {
+    "profano": PositiveClassConfig(
+        suffix="profano",
+        display_name="Profano",
+        positive_label_id=1,
+        score_column="score_profano",
+        score_from_profano=True,
+    ),
+    "religioso": PositiveClassConfig(
+        suffix="religioso",
+        display_name="Religioso",
+        positive_label_id=0,
+        score_column="score_religioso",
+        score_from_profano=False,
+    ),
+}
 
 _PETROFF10 = [
     "#3f90da", "#ffa90e", "#bd1f01", "#94a4a2", "#832db6",
@@ -137,6 +167,7 @@ def _load_eval_predictions(eval_csv_path: str | os.PathLike) -> Tuple[pd.DataFra
     df["score_profano"] = pd.to_numeric(df["score_profano"], errors="coerce")
     df = df.dropna(subset=["y_true", "score_profano"])
     df["y_true"] = df["y_true"].astype(int)
+    df["score_religioso"] = 1.0 - df["score_profano"].astype(float)
 
     if df.empty:
         raise ValueError(f"El CSV {eval_csv_path.name} no contiene predicciones válidas.")
@@ -181,18 +212,27 @@ def _format_axis_01(ax: plt.Axes) -> None:
     ax.grid(True, which="major", linestyle="--", linewidth=0.5, alpha=0.35)
 
 
+def _class_binary_arrays(df: pd.DataFrame, class_config: PositiveClassConfig) -> Tuple[np.ndarray, np.ndarray]:
+    y_true = (df["y_true"].astype(int).to_numpy() == int(class_config.positive_label_id)).astype(int)
+    y_score = df[class_config.score_column].astype(float).to_numpy()
+    return y_true, y_score
+
+
+def _stem(base: str, algorithm_name: str, class_config: PositiveClassConfig) -> str:
+    return f"{base}_{algorithm_name}_{class_config.suffix}"
+
+
 def plot_roc_curve(
     y_true: np.ndarray,
     y_score: np.ndarray,
     algorithm_name: str,
     out_dir: Path,
     config: CurvePlotConfig,
+    class_config: PositiveClassConfig,
 ) -> Dict[str, str]:
     fpr, tpr, thresholds = roc_curve(y_true, y_score)
     roc_auc = roc_auc_score(y_true, y_score)
 
-    # Persistimos los puntos de la curva para permitir agregación multi-seed
-    # sin recalcular predicciones ni métricas.
     out_dir.mkdir(parents=True, exist_ok=True)
     pd.DataFrame({
         "fpr": fpr,
@@ -200,19 +240,22 @@ def plot_roc_curve(
         "threshold": thresholds,
         "roc_auc": roc_auc,
         "algorithm_name": algorithm_name,
-    }).to_csv(out_dir / f"roc_curve_{algorithm_name}.csv", index=False, encoding="utf-8")
+        "positive_class": class_config.display_name,
+        "positive_label_id": class_config.positive_label_id,
+        "score_column": class_config.score_column,
+    }).to_csv(out_dir / f"{_stem('roc_curve', algorithm_name, class_config)}.csv", index=False, encoding="utf-8")
 
     fig, ax = plt.subplots(figsize=(config.width, config.height))
     ax.plot(fpr, tpr, linewidth=2.2, label=f"AUC = {roc_auc:.3f}")
     ax.plot([0, 1], [0, 1], linestyle="--", linewidth=1.0, color="0.45", label="Chance")
 
     _format_axis_01(ax)
-    ax.set_xlabel("False positive rate")
-    ax.set_ylabel("True positive rate")
-    ax.set_title(f"ROC curve — {_normalise_algorithm_name(algorithm_name)}")
+    ax.set_xlabel(f"False positive rate ({class_config.display_name} positive)")
+    ax.set_ylabel(f"True positive rate ({class_config.display_name} positive)")
+    ax.set_title(f"ROC curve — {_normalise_algorithm_name(algorithm_name)} — {class_config.display_name}")
     ax.legend(loc="lower right", frameon=False)
 
-    return _save_figure(fig, out_dir, f"roc_curve_{algorithm_name}", config)
+    return _save_figure(fig, out_dir, _stem("roc_curve", algorithm_name, class_config), config)
 
 
 def plot_precision_recall_curve(
@@ -221,14 +264,13 @@ def plot_precision_recall_curve(
     algorithm_name: str,
     out_dir: Path,
     config: CurvePlotConfig,
+    class_config: PositiveClassConfig,
 ) -> Dict[str, str]:
     precision, recall, thresholds = precision_recall_curve(y_true, y_score)
     pr_auc = auc(recall, precision)
     ap = average_precision_score(y_true, y_score)
     prevalence = float(np.mean(y_true))
 
-    # precision_recall_curve devuelve len(thresholds)+1 puntos. Guardamos NaN
-    # en el último threshold para conservar la alineación de la curva completa.
     thr_pad = np.append(thresholds, np.nan)
     out_dir.mkdir(parents=True, exist_ok=True)
     pd.DataFrame({
@@ -239,19 +281,22 @@ def plot_precision_recall_curve(
         "average_precision": ap,
         "prevalence": prevalence,
         "algorithm_name": algorithm_name,
-    }).to_csv(out_dir / f"precision_recall_curve_{algorithm_name}.csv", index=False, encoding="utf-8")
+        "positive_class": class_config.display_name,
+        "positive_label_id": class_config.positive_label_id,
+        "score_column": class_config.score_column,
+    }).to_csv(out_dir / f"{_stem('precision_recall_curve', algorithm_name, class_config)}.csv", index=False, encoding="utf-8")
 
     fig, ax = plt.subplots(figsize=(config.width, config.height))
     ax.plot(recall, precision, linewidth=2.2, label=f"AP = {ap:.3f}; AUC = {pr_auc:.3f}")
     ax.axhline(prevalence, linestyle="--", linewidth=1.0, color="0.45", label=f"Prevalence = {prevalence:.3f}")
 
     _format_axis_01(ax)
-    ax.set_xlabel("Recall")
-    ax.set_ylabel("Precision")
-    ax.set_title(f"Precision–Recall curve — {_normalise_algorithm_name(algorithm_name)}")
+    ax.set_xlabel(f"Recall ({class_config.display_name})")
+    ax.set_ylabel(f"Precision ({class_config.display_name})")
+    ax.set_title(f"Precision–Recall — {_normalise_algorithm_name(algorithm_name)} — {class_config.display_name}")
     ax.legend(loc="lower left", frameon=False)
 
-    return _save_figure(fig, out_dir, f"precision_recall_curve_{algorithm_name}", config)
+    return _save_figure(fig, out_dir, _stem("precision_recall_curve", algorithm_name, class_config), config)
 
 
 def compute_threshold_table(
@@ -289,6 +334,7 @@ def plot_threshold_analysis(
     algorithm_name: str,
     out_dir: Path,
     config: CurvePlotConfig,
+    class_config: PositiveClassConfig,
 ) -> Dict[str, str]:
     fig, ax = plt.subplots(figsize=(config.width + 0.8, config.height))
 
@@ -321,12 +367,12 @@ def plot_threshold_analysis(
     )
 
     _format_axis_01(ax)
-    ax.set_xlabel("Decision threshold for Profano class")
+    ax.set_xlabel(f"Decision threshold for {class_config.display_name} class")
     ax.set_ylabel("Metric value")
-    ax.set_title(f"Threshold analysis — {_normalise_algorithm_name(algorithm_name)}")
+    ax.set_title(f"Threshold analysis — {_normalise_algorithm_name(algorithm_name)} — {class_config.display_name}")
     ax.legend(loc="lower center", bbox_to_anchor=(0.5, -0.34), ncol=2, frameon=False)
 
-    return _save_figure(fig, out_dir, f"threshold_analysis_{algorithm_name}", config)
+    return _save_figure(fig, out_dir, _stem("threshold_analysis", algorithm_name, class_config), config)
 
 
 def generate_classifier_diagnostic_plots(
@@ -334,64 +380,60 @@ def generate_classifier_diagnostic_plots(
     out_dir: str | os.PathLike,
     style: str = "tableau-colorblind10",
     show: bool = False,
+    positive_classes: Iterable[str] = ("profano", "religioso"),
 ) -> Dict[str, object]:
-    """
-    Generate ROC, Precision-Recall and threshold-analysis plots from one classifier CSV.
-
-    Parameters
-    ----------
-    eval_csv_path:
-        Path to eval_predictions_<algorithm_name>.csv.
-    out_dir:
-        Experiment folder where figures and threshold CSV will be saved.
-        In your current pipeline this is:
-        experiments/teimus/classifiers/<corpus>/<seed>/
-    style:
-        "tableau-colorblind10" or "petroff10".
-    show:
-        Whether to show the figures interactively.
-
-    Returns
-    -------
-    dict with saved paths and main metrics.
-    """
+    """Generate ROC, PR and threshold-analysis plots for Profano and/or Religioso."""
     config = CurvePlotConfig(style=style, show=show)
     _set_paper_style(config)
 
     df, algorithm_name = _load_eval_predictions(eval_csv_path)
-    y_true = df["y_true"].astype(int).to_numpy()
-    y_score = df["score_profano"].astype(float).to_numpy()
-
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    threshold_df = compute_threshold_table(y_true, y_score)
-    threshold_csv = out_dir / f"threshold_analysis_{algorithm_name}.csv"
-    threshold_df.to_csv(threshold_csv, index=False, encoding="utf-8")
+    outputs: Dict[str, object] = {"algorithm_name": algorithm_name, "classes": {}}
 
-    saved = {
-        "roc": plot_roc_curve(y_true, y_score, algorithm_name, out_dir, config),
-        "precision_recall": plot_precision_recall_curve(y_true, y_score, algorithm_name, out_dir, config),
-        "threshold_analysis": plot_threshold_analysis(threshold_df, algorithm_name, out_dir, config),
-        "threshold_csv": str(threshold_csv),
-        "algorithm_name": algorithm_name,
-        "roc_auc": _safe_metric(roc_auc_score, y_true, y_score),
-        "average_precision": _safe_metric(average_precision_score, y_true, y_score),
-        "best_f1_threshold": float(threshold_df.loc[threshold_df["is_best_f1"], "threshold"].iloc[0]),
-        "best_balanced_accuracy_threshold": float(threshold_df.loc[threshold_df["is_best_balanced_accuracy"], "threshold"].iloc[0]),
-    }
+    for class_key in positive_classes:
+        class_key = str(class_key).lower().strip()
+        if class_key not in POSITIVE_CLASS_CONFIGS:
+            raise ValueError(f"Clase positiva no válida: {class_key}. Usa 'profano' o 'religioso'.")
+        class_config = POSITIVE_CLASS_CONFIGS[class_key]
+        y_true, y_score = _class_binary_arrays(df, class_config)
 
-    print("\n==============================")
-    print("CURVAS DIAGNÓSTICAS")
-    print("==============================")
-    print("Modelo:", algorithm_name)
-    print("ROC-AUC: %.4f" % saved["roc_auc"])
-    print("Average precision: %.4f" % saved["average_precision"])
-    print("Best F1 threshold: %.3f" % saved["best_f1_threshold"])
-    print("Best balanced-accuracy threshold: %.3f" % saved["best_balanced_accuracy_threshold"])
-    print("[OK] Figuras guardadas en:", str(out_dir))
+        threshold_df = compute_threshold_table(y_true, y_score)
+        threshold_df["algorithm_name"] = algorithm_name
+        threshold_df["positive_class"] = class_config.display_name
+        threshold_df["positive_label_id"] = class_config.positive_label_id
+        threshold_df["score_column"] = class_config.score_column
+        threshold_csv = out_dir / f"{_stem('threshold_analysis', algorithm_name, class_config)}.csv"
+        threshold_df.to_csv(threshold_csv, index=False, encoding="utf-8")
 
-    return saved
+        saved = {
+            "roc": plot_roc_curve(y_true, y_score, algorithm_name, out_dir, config, class_config),
+            "precision_recall": plot_precision_recall_curve(y_true, y_score, algorithm_name, out_dir, config, class_config),
+            "threshold_analysis": plot_threshold_analysis(threshold_df, algorithm_name, out_dir, config, class_config),
+            "threshold_csv": str(threshold_csv),
+            "positive_class": class_config.display_name,
+            "positive_label_id": class_config.positive_label_id,
+            "score_column": class_config.score_column,
+            "roc_auc": _safe_metric(roc_auc_score, y_true, y_score),
+            "average_precision": _safe_metric(average_precision_score, y_true, y_score),
+            "best_f1_threshold": float(threshold_df.loc[threshold_df["is_best_f1"], "threshold"].iloc[0]),
+            "best_balanced_accuracy_threshold": float(threshold_df.loc[threshold_df["is_best_balanced_accuracy"], "threshold"].iloc[0]),
+        }
+        outputs["classes"][class_key] = saved
+
+        print("\n==============================")
+        print("CURVAS DIAGNÓSTICAS")
+        print("==============================")
+        print("Modelo:", algorithm_name)
+        print("Clase positiva:", class_config.display_name)
+        print("ROC-AUC: %.4f" % saved["roc_auc"])
+        print("Average precision: %.4f" % saved["average_precision"])
+        print("Best F1 threshold: %.3f" % saved["best_f1_threshold"])
+        print("Best balanced-accuracy threshold: %.3f" % saved["best_balanced_accuracy_threshold"])
+        print("[OK] Figuras guardadas en:", str(out_dir))
+
+    return outputs
 
 
 def generate_plots_for_algorithms(
@@ -399,6 +441,7 @@ def generate_plots_for_algorithms(
     algorithm_names: Iterable[str],
     style: str = "tableau-colorblind10",
     show: bool = False,
+    positive_classes: Iterable[str] = ("profano", "religioso"),
 ) -> Dict[str, Dict[str, object]]:
     """Convenience wrapper for several algorithm names inside the same experiment folder."""
     results_dir = Path(results_dir)
@@ -411,6 +454,7 @@ def generate_plots_for_algorithms(
             out_dir=results_dir,
             style=style,
             show=show,
+            positive_classes=positive_classes,
         )
 
     return outputs
@@ -419,10 +463,6 @@ def generate_plots_for_algorithms(
 
 
 
-
-
-
-#
 # # -*- coding: utf-8 -*-
 # """
 # classifier_curves.py
@@ -613,8 +653,19 @@ def generate_plots_for_algorithms(
 #     out_dir: Path,
 #     config: CurvePlotConfig,
 # ) -> Dict[str, str]:
-#     fpr, tpr, _ = roc_curve(y_true, y_score)
+#     fpr, tpr, thresholds = roc_curve(y_true, y_score)
 #     roc_auc = roc_auc_score(y_true, y_score)
+#
+#     # Persistimos los puntos de la curva para permitir agregación multi-seed
+#     # sin recalcular predicciones ni métricas.
+#     out_dir.mkdir(parents=True, exist_ok=True)
+#     pd.DataFrame({
+#         "fpr": fpr,
+#         "tpr": tpr,
+#         "threshold": thresholds,
+#         "roc_auc": roc_auc,
+#         "algorithm_name": algorithm_name,
+#     }).to_csv(out_dir / f"roc_curve_{algorithm_name}.csv", index=False, encoding="utf-8")
 #
 #     fig, ax = plt.subplots(figsize=(config.width, config.height))
 #     ax.plot(fpr, tpr, linewidth=2.2, label=f"AUC = {roc_auc:.3f}")
@@ -636,10 +687,24 @@ def generate_plots_for_algorithms(
 #     out_dir: Path,
 #     config: CurvePlotConfig,
 # ) -> Dict[str, str]:
-#     precision, recall, _ = precision_recall_curve(y_true, y_score)
+#     precision, recall, thresholds = precision_recall_curve(y_true, y_score)
 #     pr_auc = auc(recall, precision)
 #     ap = average_precision_score(y_true, y_score)
 #     prevalence = float(np.mean(y_true))
+#
+#     # precision_recall_curve devuelve len(thresholds)+1 puntos. Guardamos NaN
+#     # en el último threshold para conservar la alineación de la curva completa.
+#     thr_pad = np.append(thresholds, np.nan)
+#     out_dir.mkdir(parents=True, exist_ok=True)
+#     pd.DataFrame({
+#         "recall": recall,
+#         "precision": precision,
+#         "threshold": thr_pad,
+#         "pr_auc": pr_auc,
+#         "average_precision": ap,
+#         "prevalence": prevalence,
+#         "algorithm_name": algorithm_name,
+#     }).to_csv(out_dir / f"precision_recall_curve_{algorithm_name}.csv", index=False, encoding="utf-8")
 #
 #     fig, ax = plt.subplots(figsize=(config.width, config.height))
 #     ax.plot(recall, precision, linewidth=2.2, label=f"AP = {ap:.3f}; AUC = {pr_auc:.3f}")
@@ -814,3 +879,403 @@ def generate_plots_for_algorithms(
 #         )
 #
 #     return outputs
+#
+#
+#
+#
+#
+#
+#
+#
+# #
+# # # -*- coding: utf-8 -*-
+# # """
+# # classifier_curves.py
+# #
+# # Paper-ready diagnostic plots for the TEIMUS Profano/Religioso binary classifier:
+# #     1) ROC curve
+# #     2) Precision-Recall curve
+# #     3) Threshold analysis
+# #
+# # The module works from the evaluation CSV generated by load_model_and_evaluate(),
+# # therefore it does not re-extract MusicXML features. It expects, at minimum:
+# #     - y_true
+# #     - score_profano
+# #     - algorithm_name, optional but recommended
+# #
+# # Positive class convention:
+# #     Profano = 1
+# #     Religioso = 0
+# # """
+# #
+# # from __future__ import annotations
+# #
+# # import os
+# # from dataclasses import dataclass
+# # from pathlib import Path
+# # from typing import Dict, Iterable, Optional, Tuple
+# #
+# # import numpy as np
+# # import pandas as pd
+# #
+# # import matplotlib as mpl
+# # import matplotlib.pyplot as plt
+# # from matplotlib.ticker import MultipleLocator, FormatStrFormatter
+# #
+# # from sklearn.metrics import (
+# #     auc,
+# #     average_precision_score,
+# #     balanced_accuracy_score,
+# #     f1_score,
+# #     precision_recall_curve,
+# #     precision_score,
+# #     recall_score,
+# #     roc_auc_score,
+# #     roc_curve,
+# # )
+# #
+# #
+# # @dataclass(frozen=True)
+# # class CurvePlotConfig:
+# #     """Styling options for publication-quality classifier figures."""
+# #
+# #     style: str = "tableau-colorblind10"  # "tableau-colorblind10" or "petroff10"
+# #     font_family: str = "DejaVu Serif"    # portable serif; change to Times New Roman if installed
+# #     base_font_size: int = 11
+# #     label_font_size: int = 12
+# #     title_font_size: int = 12
+# #     legend_font_size: int = 10
+# #     dpi: int = 400
+# #     width: float = 4.8
+# #     height: float = 4.0
+# #     save_png: bool = True
+# #     save_eps: bool = True
+# #     show: bool = False
+# #
+# #
+# # _PETROFF10 = [
+# #     "#3f90da", "#ffa90e", "#bd1f01", "#94a4a2", "#832db6",
+# #     "#a96b59", "#e76300", "#b9ac70", "#717581", "#92dadd",
+# # ]
+# #
+# # _TABLEAU_COLORBLIND10 = [
+# #     "#006BA4", "#FF800E", "#ABABAB", "#595959", "#5F9ED1",
+# #     "#C85200", "#898989", "#A2C8EC", "#FFBC79", "#CFCFCF",
+# # ]
+# #
+# #
+# # def _normalise_algorithm_name(name: str) -> str:
+# #     return str(name).replace("_", " ").title()
+# #
+# #
+# # def _set_paper_style(config: CurvePlotConfig) -> None:
+# #     """Apply robust matplotlib styling with palette fallback."""
+# #     plt.style.use("default")
+# #
+# #     if config.style.lower() == "petroff10":
+# #         colors = _PETROFF10
+# #     else:
+# #         try:
+# #             plt.style.use(config.style)
+# #             colors = mpl.rcParams["axes.prop_cycle"].by_key().get("color", _TABLEAU_COLORBLIND10)
+# #         except Exception:
+# #             colors = _TABLEAU_COLORBLIND10
+# #
+# #     mpl.rcParams.update({
+# #         "font.family": config.font_family,
+# #         "font.size": config.base_font_size,
+# #         "axes.titlesize": config.title_font_size,
+# #         "axes.labelsize": config.label_font_size,
+# #         "legend.fontsize": config.legend_font_size,
+# #         "xtick.labelsize": config.base_font_size,
+# #         "ytick.labelsize": config.base_font_size,
+# #         "axes.linewidth": 0.9,
+# #         "axes.spines.top": False,
+# #         "axes.spines.right": False,
+# #         "figure.dpi": config.dpi,
+# #         "savefig.dpi": config.dpi,
+# #         "savefig.bbox": "tight",
+# #         "savefig.pad_inches": 0.04,
+# #         "pdf.fonttype": 42,
+# #         "ps.fonttype": 42,
+# #         "axes.prop_cycle": mpl.cycler(color=colors),
+# #     })
+# #
+# #
+# # def _safe_metric(func, *args, default: float = np.nan, **kwargs) -> float:
+# #     try:
+# #         return float(func(*args, **kwargs))
+# #     except Exception:
+# #         return float(default)
+# #
+# #
+# # def _load_eval_predictions(eval_csv_path: str | os.PathLike) -> Tuple[pd.DataFrame, str]:
+# #     eval_csv_path = Path(eval_csv_path)
+# #     if not eval_csv_path.exists():
+# #         raise FileNotFoundError(f"No existe el CSV de evaluación: {eval_csv_path}")
+# #
+# #     df = pd.read_csv(eval_csv_path)
+# #     required = {"y_true", "score_profano"}
+# #     missing = required.difference(df.columns)
+# #     if missing:
+# #         raise ValueError(
+# #             f"El CSV {eval_csv_path.name} no contiene las columnas requeridas: {sorted(missing)}"
+# #         )
+# #
+# #     df = df.copy()
+# #     df["y_true"] = pd.to_numeric(df["y_true"], errors="coerce").astype("Int64")
+# #     df["score_profano"] = pd.to_numeric(df["score_profano"], errors="coerce")
+# #     df = df.dropna(subset=["y_true", "score_profano"])
+# #     df["y_true"] = df["y_true"].astype(int)
+# #
+# #     if df.empty:
+# #         raise ValueError(f"El CSV {eval_csv_path.name} no contiene predicciones válidas.")
+# #
+# #     if "algorithm_name" in df.columns and len(df["algorithm_name"].dropna()) > 0:
+# #         algorithm_name = str(df["algorithm_name"].dropna().iloc[0])
+# #     else:
+# #         algorithm_name = eval_csv_path.stem.replace("eval_predictions_", "")
+# #
+# #     return df, algorithm_name
+# #
+# #
+# # def _save_figure(fig: plt.Figure, out_dir: Path, stem: str, config: CurvePlotConfig) -> Dict[str, str]:
+# #     out_dir.mkdir(parents=True, exist_ok=True)
+# #     saved: Dict[str, str] = {}
+# #
+# #     if config.save_png:
+# #         png_path = out_dir / f"{stem}.png"
+# #         fig.savefig(png_path, format="png")
+# #         saved["png"] = str(png_path)
+# #
+# #     if config.save_eps:
+# #         eps_path = out_dir / f"{stem}.eps"
+# #         fig.savefig(eps_path, format="eps")
+# #         saved["eps"] = str(eps_path)
+# #
+# #     if config.show:
+# #         plt.show()
+# #     else:
+# #         plt.close(fig)
+# #
+# #     return saved
+# #
+# #
+# # def _format_axis_01(ax: plt.Axes) -> None:
+# #     ax.set_xlim(0.0, 1.0)
+# #     ax.set_ylim(0.0, 1.0)
+# #     ax.xaxis.set_major_locator(MultipleLocator(0.2))
+# #     ax.yaxis.set_major_locator(MultipleLocator(0.2))
+# #     ax.xaxis.set_major_formatter(FormatStrFormatter("%.1f"))
+# #     ax.yaxis.set_major_formatter(FormatStrFormatter("%.1f"))
+# #     ax.grid(True, which="major", linestyle="--", linewidth=0.5, alpha=0.35)
+# #
+# #
+# # def plot_roc_curve(
+# #     y_true: np.ndarray,
+# #     y_score: np.ndarray,
+# #     algorithm_name: str,
+# #     out_dir: Path,
+# #     config: CurvePlotConfig,
+# # ) -> Dict[str, str]:
+# #     fpr, tpr, _ = roc_curve(y_true, y_score)
+# #     roc_auc = roc_auc_score(y_true, y_score)
+# #
+# #     fig, ax = plt.subplots(figsize=(config.width, config.height))
+# #     ax.plot(fpr, tpr, linewidth=2.2, label=f"AUC = {roc_auc:.3f}")
+# #     ax.plot([0, 1], [0, 1], linestyle="--", linewidth=1.0, color="0.45", label="Chance")
+# #
+# #     _format_axis_01(ax)
+# #     ax.set_xlabel("False positive rate")
+# #     ax.set_ylabel("True positive rate")
+# #     ax.set_title(f"ROC curve — {_normalise_algorithm_name(algorithm_name)}")
+# #     ax.legend(loc="lower right", frameon=False)
+# #
+# #     return _save_figure(fig, out_dir, f"roc_curve_{algorithm_name}", config)
+# #
+# #
+# # def plot_precision_recall_curve(
+# #     y_true: np.ndarray,
+# #     y_score: np.ndarray,
+# #     algorithm_name: str,
+# #     out_dir: Path,
+# #     config: CurvePlotConfig,
+# # ) -> Dict[str, str]:
+# #     precision, recall, _ = precision_recall_curve(y_true, y_score)
+# #     pr_auc = auc(recall, precision)
+# #     ap = average_precision_score(y_true, y_score)
+# #     prevalence = float(np.mean(y_true))
+# #
+# #     fig, ax = plt.subplots(figsize=(config.width, config.height))
+# #     ax.plot(recall, precision, linewidth=2.2, label=f"AP = {ap:.3f}; AUC = {pr_auc:.3f}")
+# #     ax.axhline(prevalence, linestyle="--", linewidth=1.0, color="0.45", label=f"Prevalence = {prevalence:.3f}")
+# #
+# #     _format_axis_01(ax)
+# #     ax.set_xlabel("Recall")
+# #     ax.set_ylabel("Precision")
+# #     ax.set_title(f"Precision–Recall curve — {_normalise_algorithm_name(algorithm_name)}")
+# #     ax.legend(loc="lower left", frameon=False)
+# #
+# #     return _save_figure(fig, out_dir, f"precision_recall_curve_{algorithm_name}", config)
+# #
+# #
+# # def compute_threshold_table(
+# #     y_true: np.ndarray,
+# #     y_score: np.ndarray,
+# #     thresholds: Optional[Iterable[float]] = None,
+# # ) -> pd.DataFrame:
+# #     if thresholds is None:
+# #         thresholds = np.linspace(0.0, 1.0, 201)
+# #
+# #     rows = []
+# #     for thr in thresholds:
+# #         y_pred = (y_score >= float(thr)).astype(int)
+# #         rows.append({
+# #             "threshold": float(thr),
+# #             "precision": _safe_metric(precision_score, y_true, y_pred, zero_division=0),
+# #             "recall": _safe_metric(recall_score, y_true, y_pred, zero_division=0),
+# #             "f1": _safe_metric(f1_score, y_true, y_pred, zero_division=0),
+# #             "balanced_accuracy": _safe_metric(balanced_accuracy_score, y_true, y_pred),
+# #             "positive_rate": float(np.mean(y_pred)),
+# #         })
+# #
+# #     df_thr = pd.DataFrame(rows)
+# #     best_f1_idx = df_thr["f1"].idxmax()
+# #     best_bacc_idx = df_thr["balanced_accuracy"].idxmax()
+# #     df_thr["is_best_f1"] = False
+# #     df_thr["is_best_balanced_accuracy"] = False
+# #     df_thr.loc[best_f1_idx, "is_best_f1"] = True
+# #     df_thr.loc[best_bacc_idx, "is_best_balanced_accuracy"] = True
+# #     return df_thr
+# #
+# #
+# # def plot_threshold_analysis(
+# #     threshold_df: pd.DataFrame,
+# #     algorithm_name: str,
+# #     out_dir: Path,
+# #     config: CurvePlotConfig,
+# # ) -> Dict[str, str]:
+# #     fig, ax = plt.subplots(figsize=(config.width + 0.8, config.height))
+# #
+# #     ax.plot(threshold_df["threshold"], threshold_df["precision"], linewidth=1.9, label="Precision")
+# #     ax.plot(threshold_df["threshold"], threshold_df["recall"], linewidth=1.9, label="Recall")
+# #     ax.plot(threshold_df["threshold"], threshold_df["f1"], linewidth=2.2, label="F1")
+# #     ax.plot(threshold_df["threshold"], threshold_df["balanced_accuracy"], linewidth=2.2, label="Balanced accuracy")
+# #
+# #     best_f1 = threshold_df.loc[threshold_df["is_best_f1"]].iloc[0]
+# #     best_bacc = threshold_df.loc[threshold_df["is_best_balanced_accuracy"]].iloc[0]
+# #
+# #     ax.axvline(best_f1["threshold"], linestyle="--", linewidth=1.0, color="0.35")
+# #     ax.axvline(best_bacc["threshold"], linestyle=":", linewidth=1.2, color="0.20")
+# #
+# #     ax.annotate(
+# #         f"Best F1\nτ={best_f1['threshold']:.2f}",
+# #         xy=(best_f1["threshold"], best_f1["f1"]),
+# #         xytext=(8, -28),
+# #         textcoords="offset points",
+# #         fontsize=config.legend_font_size,
+# #         arrowprops={"arrowstyle": "->", "lw": 0.8},
+# #     )
+# #     ax.annotate(
+# #         f"Best BAcc\nτ={best_bacc['threshold']:.2f}",
+# #         xy=(best_bacc["threshold"], best_bacc["balanced_accuracy"]),
+# #         xytext=(8, 18),
+# #         textcoords="offset points",
+# #         fontsize=config.legend_font_size,
+# #         arrowprops={"arrowstyle": "->", "lw": 0.8},
+# #     )
+# #
+# #     _format_axis_01(ax)
+# #     ax.set_xlabel("Decision threshold for Profano class")
+# #     ax.set_ylabel("Metric value")
+# #     ax.set_title(f"Threshold analysis — {_normalise_algorithm_name(algorithm_name)}")
+# #     ax.legend(loc="lower center", bbox_to_anchor=(0.5, -0.34), ncol=2, frameon=False)
+# #
+# #     return _save_figure(fig, out_dir, f"threshold_analysis_{algorithm_name}", config)
+# #
+# #
+# # def generate_classifier_diagnostic_plots(
+# #     eval_csv_path: str | os.PathLike,
+# #     out_dir: str | os.PathLike,
+# #     style: str = "tableau-colorblind10",
+# #     show: bool = False,
+# # ) -> Dict[str, object]:
+# #     """
+# #     Generate ROC, Precision-Recall and threshold-analysis plots from one classifier CSV.
+# #
+# #     Parameters
+# #     ----------
+# #     eval_csv_path:
+# #         Path to eval_predictions_<algorithm_name>.csv.
+# #     out_dir:
+# #         Experiment folder where figures and threshold CSV will be saved.
+# #         In your current pipeline this is:
+# #         experiments/teimus/classifiers/<corpus>/<seed>/
+# #     style:
+# #         "tableau-colorblind10" or "petroff10".
+# #     show:
+# #         Whether to show the figures interactively.
+# #
+# #     Returns
+# #     -------
+# #     dict with saved paths and main metrics.
+# #     """
+# #     config = CurvePlotConfig(style=style, show=show)
+# #     _set_paper_style(config)
+# #
+# #     df, algorithm_name = _load_eval_predictions(eval_csv_path)
+# #     y_true = df["y_true"].astype(int).to_numpy()
+# #     y_score = df["score_profano"].astype(float).to_numpy()
+# #
+# #     out_dir = Path(out_dir)
+# #     out_dir.mkdir(parents=True, exist_ok=True)
+# #
+# #     threshold_df = compute_threshold_table(y_true, y_score)
+# #     threshold_csv = out_dir / f"threshold_analysis_{algorithm_name}.csv"
+# #     threshold_df.to_csv(threshold_csv, index=False, encoding="utf-8")
+# #
+# #     saved = {
+# #         "roc": plot_roc_curve(y_true, y_score, algorithm_name, out_dir, config),
+# #         "precision_recall": plot_precision_recall_curve(y_true, y_score, algorithm_name, out_dir, config),
+# #         "threshold_analysis": plot_threshold_analysis(threshold_df, algorithm_name, out_dir, config),
+# #         "threshold_csv": str(threshold_csv),
+# #         "algorithm_name": algorithm_name,
+# #         "roc_auc": _safe_metric(roc_auc_score, y_true, y_score),
+# #         "average_precision": _safe_metric(average_precision_score, y_true, y_score),
+# #         "best_f1_threshold": float(threshold_df.loc[threshold_df["is_best_f1"], "threshold"].iloc[0]),
+# #         "best_balanced_accuracy_threshold": float(threshold_df.loc[threshold_df["is_best_balanced_accuracy"], "threshold"].iloc[0]),
+# #     }
+# #
+# #     print("\n==============================")
+# #     print("CURVAS DIAGNÓSTICAS")
+# #     print("==============================")
+# #     print("Modelo:", algorithm_name)
+# #     print("ROC-AUC: %.4f" % saved["roc_auc"])
+# #     print("Average precision: %.4f" % saved["average_precision"])
+# #     print("Best F1 threshold: %.3f" % saved["best_f1_threshold"])
+# #     print("Best balanced-accuracy threshold: %.3f" % saved["best_balanced_accuracy_threshold"])
+# #     print("[OK] Figuras guardadas en:", str(out_dir))
+# #
+# #     return saved
+# #
+# #
+# # def generate_plots_for_algorithms(
+# #     results_dir: str | os.PathLike,
+# #     algorithm_names: Iterable[str],
+# #     style: str = "tableau-colorblind10",
+# #     show: bool = False,
+# # ) -> Dict[str, Dict[str, object]]:
+# #     """Convenience wrapper for several algorithm names inside the same experiment folder."""
+# #     results_dir = Path(results_dir)
+# #     outputs: Dict[str, Dict[str, object]] = {}
+# #
+# #     for algorithm_name in algorithm_names:
+# #         eval_csv = results_dir / f"eval_predictions_{algorithm_name}.csv"
+# #         outputs[algorithm_name] = generate_classifier_diagnostic_plots(
+# #             eval_csv_path=eval_csv,
+# #             out_dir=results_dir,
+# #             style=style,
+# #             show=show,
+# #         )
+# #
+# #     return outputs
