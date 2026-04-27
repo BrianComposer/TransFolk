@@ -97,7 +97,10 @@ if __name__ == "__main__":
     CORPUS_P_DIR = str(resolver.data_clean(corpusP, corpusP.subcorpus))
     CORPUS_R_DIR = str(resolver.data_clean(corpusR, corpusR.subcorpus))
 
-    seeds = [1, 17, 22, 44, 56, 309]
+    # seeds = [1, 17, 22, 44, 56, 309]
+    # seeds = [2, 5, 28, 74, 150, 221, 407, 553, 703]
+    seeds = [1, 17, 22, 44, 56, 309, 2, 5, 28, 74, 150, 221, 407, 553, 703]
+
     selected_algorithm_names = [ALGORITHM_NAME[i] for i in algorithm_ids]
 
     for seed in seeds:
