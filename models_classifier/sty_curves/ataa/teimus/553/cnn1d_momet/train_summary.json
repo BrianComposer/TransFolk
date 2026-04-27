@@ -1,0 +1,19 @@
+{
+  "algorithm_id": 10,
+  "algorithm_name": "cnn1d_momet",
+  "model_family": "sequential_momet",
+  "tokenization_json_path": "D:\\BackUpDrive\\Programacion\\Python\\TransFolk\\data\\ataa\\tokenization\\momet_ataa_20260427_181710_626968.json",
+  "label_prof": "Profano",
+  "label_reli": "Religioso",
+  "n_train_tokenized": 634,
+  "n_train_used": 538,
+  "n_validation_used": 96,
+  "n_prof": 347,
+  "n_reli": 287,
+  "vocab_size": 77,
+  "best_epoch": 10,
+  "best_val_balanced_accuracy": 0.8874506362439667,
+  "pad_id": 0,
+  "unk_id": 1,
+  "cls_id": 2
+}
