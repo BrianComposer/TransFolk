@@ -22,9 +22,10 @@ from __future__ import annotations
 import json
 import os
 import random
+from datetime import datetime
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -159,6 +160,132 @@ def tokenize_musicxml_momet(path: str, config: SequenceClassifierConfig) -> Opti
     return [CLS_TOKEN] + [str(t) for t in tokens]
 
 
+
+
+def _safe_corpus_name(corpus_name: str) -> str:
+    """Normaliza el nombre del corpus para construir nombres de archivo estables."""
+    safe = "".join(ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in str(corpus_name).strip())
+    return safe or "corpus"
+
+
+def _list_music_files(folder: str) -> List[str]:
+    paths: List[str] = []
+    for ext in ("*.musicxml", "*.xml", "*.mxl"):
+        paths.extend(str(p) for p in Path(folder).rglob(ext))
+    return sorted(set(paths))
+
+
+def _latest_tokenization_file(tokenization_dir: Union[str, os.PathLike], corpus_name: str) -> Optional[Path]:
+    """Devuelve la tokenización MoMeT más reciente para el corpus, si existe."""
+    tokenization_dir = Path(tokenization_dir)
+    pattern = f"momet_{_safe_corpus_name(corpus_name)}_*.json"
+    candidates = [p for p in tokenization_dir.glob(pattern) if not p.name.endswith(".meta.json")]
+    candidates = sorted(candidates, key=lambda p: p.stat().st_mtime, reverse=True)
+    return candidates[0] if candidates else None
+
+
+def load_momet_tokenization_json(tokenization_json_path: Union[str, os.PathLike]) -> Dict[str, List[str]]:
+    """Carga un JSON {nombre_obra: [tokens]} y valida mínimamente su estructura."""
+    path = Path(tokenization_json_path)
+    if not path.exists():
+        raise FileNotFoundError(f"No existe el archivo de tokenización MoMeT: {path}")
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict) or not data:
+        raise ValueError(f"El archivo de tokenización MoMeT está vacío o no es un diccionario: {path}")
+    return {str(k): [str(t) for t in v] for k, v in data.items() if isinstance(v, list) and len(v) > 0}
+
+
+def get_or_create_momet_corpus_tokenization(
+    prof_dir: str,
+    reli_dir: str,
+    corpus_name: str,
+    tokenization_dir: Union[str, os.PathLike],
+    force_tokenization: bool = False,
+    config: Optional[SequenceClassifierConfig] = None,
+) -> Path:
+    """Crea o reutiliza una tokenización global MoMeT a nivel de corpus.
+
+    La tokenización se ejecuta una única vez por corpus salvo que el usuario
+    fuerce explícitamente forceTokenization=True o no exista ningún archivo
+    compatible. El JSON se guarda como:
+
+        <corpus>/tokenization/momet_<corpus>_<YYYYmmdd_HHMMSS>.json
+
+    con la forma:
+
+        {"nombre_obra.musicxml": ["[CLS]", "TS_3/4", ...], ...}
+
+    Los splits posteriores de cualquier seed consultan este archivo mediante
+    la columna __file/basename, sin volver a tokenizar durante train/eval.
+    """
+    config = config or SequenceClassifierConfig()
+    tokenization_dir = Path(tokenization_dir)
+    tokenization_dir.mkdir(parents=True, exist_ok=True)
+
+    latest = _latest_tokenization_file(tokenization_dir, corpus_name)
+    if latest is not None and not force_tokenization:
+        print("[INFO] Reutilizando tokenización MoMeT de corpus:", latest)
+        return latest
+
+    if force_tokenization:
+        print("[INFO] forceTokenization=True: se regenerará la tokenización MoMeT del corpus.")
+    else:
+        print("[INFO] No existe tokenización MoMeT previa. Se generará una nueva.")
+
+    music_files = _list_music_files(prof_dir) + _list_music_files(reli_dir)
+    if not music_files:
+        raise RuntimeError(f"No se encontraron MusicXML/MXL en {prof_dir} ni en {reli_dir}.")
+
+    token_map: Dict[str, List[str]] = {}
+    duplicate_names = set()
+    for i, path in enumerate(sorted(music_files), start=1):
+        key = os.path.basename(path)
+        if key in token_map:
+            duplicate_names.add(key)
+            print(f"[WARN] Nombre de obra duplicado en tokenización MoMeT: {key}. Se conserva la primera aparición.")
+            continue
+        tokens = tokenize_musicxml_momet(path, config)
+        if not tokens:
+            print("[WARN] Sin tokens MoMeT:", key)
+            continue
+        token_map[key] = tokens
+        if i % 50 == 0:
+            print(f"[INFO] Tokenizadas {i}/{len(music_files)} obras")
+
+    if not token_map:
+        raise RuntimeError("No se pudo tokenizar ninguna obra del corpus con MoMeT.")
+
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    out_path = tokenization_dir / f"momet_{_safe_corpus_name(corpus_name)}_{stamp}.json"
+    out_path.write_text(json.dumps(token_map, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    meta_path = out_path.with_suffix(".meta.json")
+    meta = {
+        "corpus_name": corpus_name,
+        "created_at": stamp,
+        "n_files_found": len(music_files),
+        "n_tokenized": len(token_map),
+        "duplicate_file_names": sorted(duplicate_names),
+        "contains_cls_token": True,
+        "tokenizer": "MoMeT",
+    }
+    meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    print("[OK] Tokenización MoMeT de corpus guardada en:", out_path)
+    return out_path
+
+
+def _lookup_tokens_for_piece(token_map: Dict[str, List[str]], path: str) -> Optional[List[str]]:
+    """Busca tokens por nombre de obra; acepta fallback por basename normalizado."""
+    fname = os.path.basename(str(path))
+    tokens = token_map.get(fname)
+    if tokens is not None:
+        return tokens
+    for key, value in token_map.items():
+        if os.path.basename(str(key)) == fname:
+            return value
+    return None
+
 def build_vocab_from_training_sequences(token_sequences: Iterable[Sequence[str]]) -> Dict[str, int]:
     """Construye el vocabulario solo con training para evitar data leakage."""
 
@@ -291,19 +418,27 @@ def _prepare_sequence_items(
     config: SequenceClassifierConfig,
     vocab: Optional[Dict[str, int]] = None,
     build_vocab: bool = False,
+    tokenization_json_path: Optional[Union[str, os.PathLike]] = None,
 ) -> Tuple[List[Tuple[List[int], int, str, str]], Optional[Dict[str, int]], pd.DataFrame]:
     token_rows = []
     sequences = []
+
+    if tokenization_json_path is None:
+        raise ValueError(
+            "tokenization_json_path es obligatorio para cnn1d_momet. "
+            "La tokenización debe existir a nivel de corpus/tokenization y no ejecutarse dentro de train/eval."
+        )
+    token_map = load_momet_tokenization_json(tokenization_json_path)
 
     for _, r in df_meta.iterrows():
         path = str(r["__path"])
         y = int(r["label_id"])
         fname = os.path.basename(path)
-        tokens = tokenize_musicxml_momet(path, config)
+        tokens = _lookup_tokens_for_piece(token_map, path)
         if not tokens:
-            print("[WARN] Sin tokens MoMeT:", fname)
+            print("[WARN] La obra no está en la tokenización MoMeT de corpus:", fname)
             continue
-        token_rows.append({"file": fname, "path": path, "label_id": y, "n_tokens": len(tokens)})
+        token_rows.append({"file": fname, "path": path, "label_id": y, "n_tokens": len(tokens), "tokenization_json": str(tokenization_json_path)})
         sequences.append((tokens, y, path, fname))
 
     if not sequences:
@@ -389,6 +524,7 @@ def train_and_save_sequence_model(
     label_reli: str = "Religioso",
     random_state: int = 42,
     config: Optional[SequenceClassifierConfig] = None,
+    tokenization_json_path: Optional[Union[str, os.PathLike]] = None,
 ) -> str:
     os.makedirs(out_dir, exist_ok=True)
     config = config or SequenceClassifierConfig()
@@ -396,7 +532,12 @@ def train_and_save_sequence_model(
     dev = _device()
 
     df_train_meta = df_split[df_split["split"] == "train"].copy()
-    all_items, vocab, token_table = _prepare_sequence_items(df_train_meta, config, build_vocab=True)
+    all_items, vocab, token_table = _prepare_sequence_items(
+        df_train_meta,
+        config,
+        build_vocab=True,
+        tokenization_json_path=tokenization_json_path,
+    )
 
     y_all = np.asarray([y for _, y, _, _ in all_items], dtype=int)
     indices = np.arange(len(all_items))
@@ -466,6 +607,7 @@ def train_and_save_sequence_model(
         "algorithm_id": int(algorithm_id),
         "algorithm_name": algorithm_name,
         "model_family": "sequential_momet",
+        "tokenization_json_path": str(tokenization_json_path),
         "label_prof": label_prof,
         "label_reli": label_reli,
         "n_train_tokenized": int(len(all_items)),
@@ -490,6 +632,7 @@ def load_sequence_model_and_evaluate(
     model_dir: str,
     df_split: pd.DataFrame,
     out_csv_path: str = "eval_predictions_cnn1d_momet.csv",
+    tokenization_json_path: Optional[Union[str, os.PathLike]] = None,
 ) -> pd.DataFrame:
     model_dir_p = Path(model_dir)
     model_path = model_dir_p / "model.pt"
@@ -511,6 +654,8 @@ def load_sequence_model_and_evaluate(
     algorithm_name = summary.get("algorithm_name", model_dir_p.name)
     label_prof = summary.get("label_prof", "Profano")
     label_reli = summary.get("label_reli", "Religioso")
+    if tokenization_json_path is None:
+        tokenization_json_path = summary.get("tokenization_json_path")
 
     dev = _device()
     checkpoint = torch.load(model_path, map_location=dev)
@@ -518,7 +663,13 @@ def load_sequence_model_and_evaluate(
     model.load_state_dict(checkpoint["model_state_dict"])
 
     df_eval_meta = df_split[df_split["split"].isin(["test", "eval"])].copy()
-    eval_items, _, token_table = _prepare_sequence_items(df_eval_meta, config, vocab=vocab, build_vocab=False)
+    eval_items, _, token_table = _prepare_sequence_items(
+        df_eval_meta,
+        config,
+        vocab=vocab,
+        build_vocab=False,
+        tokenization_json_path=tokenization_json_path,
+    )
     eval_loader = _make_loader(eval_items, config.batch_size, shuffle=False, num_workers=config.num_workers)
 
     print("[INFO] Evaluando clasificador secuencial MoMeT CNN1D...")
