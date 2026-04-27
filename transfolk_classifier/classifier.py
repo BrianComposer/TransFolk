@@ -36,6 +36,8 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.tree import DecisionTreeClassifier
 
+from transfolk_classifier.mlp_classifier import build_mlp_classifier
+
 from transfolk_features.extract_features import extract_features_musicxml
 
 
@@ -48,7 +50,8 @@ ALGORITHM_NAME = {
     5: "hist_gradient_boosting",
     6: "knn",
     7: "naive_bayes",
-    8: "decision_tree"
+    8: "decision_tree",
+    9: "mlp_features"
 }
 
 def list_music_files(folder: str) -> List[str]:
@@ -144,9 +147,14 @@ def make_model(algorithm_id: int, random_state: int = 42) -> Pipeline:
             random_state=random_state
         )
 
+    elif algorithm_id == 9:
+        # MLP sobre el vector tabular de features musicales ya extraídas.
+        # La imputación y el escalado se mantienen en el Pipeline común.
+        clf = build_mlp_classifier(random_state=random_state)
+
     else:
         raise ValueError(
-            "algorithm_id debe estar entre 1 y 8."
+            f"algorithm_id debe estar en {sorted(ALGORITHM_NAME)}."
         )
 
     return Pipeline(
@@ -395,12 +403,7 @@ def load_model_and_evaluate(
     return df_out
 
 
-
-
-
-
-
-
+#antes del MLP funciona OK
 # # -*- coding: utf-8 -*-
 # """
 # Train/Eval separados: Profano vs Religioso (Python 3.7)
@@ -751,6 +754,7 @@ def load_model_and_evaluate(
 #         "y_true": df_eval["__y_true"].values,
 #         "y_pred": y_pred,
 #         "score_profano": score_prof,
+#         "score_religioso": 1.0 - np.asarray(score_prof, dtype=float),
 #         "label_pred": [label_prof if yp == 1 else label_reli for yp in y_pred],
 #
 #         # nuevas columnas de metadatos del modelo
