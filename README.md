@@ -132,40 +132,6 @@ The latest version of TransFolk includes the following updates:
 
 ---
 
-## System Architecture
-
-TransFolk is organised around three main layers:
-
-### 1. Core Research Layer
-
-The core layer contains the symbolic music representation, tokenizer logic, model definitions, training utilities, generation routines, and evaluation tools.
-
-### 2. Backend Inference Layer
-
-The backend exposes trained models through an API. Its responsibilities include:
-
-* Loading released model configurations.
-* Loading trained model weights.
-* Listing available models.
-* Running symbolic generation.
-* Returning generated MusicXML and related output files.
-* Serving generated outputs to the frontend.
-
-Main API capabilities include:
-
-* `GET /health` — backend health check.
-* `GET /models` — list available released models.
-* `POST /generate` — generate a melody using selected parameters.
-* `POST /generate_from_xml` — generate from a symbolic MusicXML prompt.
-* `POST /generate_from_TS_tonality` — generate from time-signature and tonality conditioning.
-* `GET /outputs/{filename}` — retrieve generated output files.
-
-### 3. Frontend Interaction Layer
-
-The frontend provides the public user interface for generation and model inspection. It connects to the backend API and renders musical outputs in the browser.
-
----
-
 ## Released and Experimental Models
 
 Released models are handled as deployable artifacts. A released model normally includes:
@@ -178,14 +144,6 @@ The backend model registry reads available released models and exposes them to t
 
 The current model family explores several decoder-only Transformer variants. The main differences are model scale and positional/attention mechanism.
 
-| Model | Architecture | Embedding dim | Heads | Layers | FF dim | Dropout | Context | Attention | Activation | Positional encoding | Description |
-|---|---:|---:|---:|---:|---:|---:|---:|---|---|---|---|
-| `mick000` | `decoder_only_gpt` | 256 | 4 | 2 | 1024 | 0.1 | 512 | Causal self-attention | GELU | Learned | Lightweight GPT-style baseline for constrained inference and quick tests. |
-| `mick003` | `decoder_only_gpt` | 640 | 10 | 6 | 2048 | 0.1 | 512 | Causal self-attention | GELU | Learned | Medium GPT-style model with higher representational capacity than `mick000`. |
-| `mick006` | `decoder_only_gpt` | 768 | 12 | 10 | 3072 | 0.1 | 512 | Causal self-attention | GELU | Learned | Large GPT-style model intended for stronger symbolic modelling while remaining more practical than the largest configuration. |
-| `mick010` | `decoder_only_gpt` | 1024 | 16 | 12 | 4096 | 0.1 | 512 | Causal self-attention | GELU | Learned | Largest GPT-style configuration in the current family, designed for maximum capacity. |
-| `robb006` | `decoder_only_rope` | 768 | 12 | 10 | 3072 | 0.1 | 512 | Causal self-attention | GELU | Rotary | RoPE-based variant of the `006` scale, encoding positional information directly inside the attention mechanism. |
-| `john006` | `decoder_only_relative` | 768 | 12 | 10 | 3072 | 0.1 | 512 | Relative attention | GELU | Relative | Relative-attention variant of the `006` scale, designed to model pairwise token distances and repeated musical patterns. |
 
 ### GPT-style `mick` models
 
