@@ -106,7 +106,7 @@ The latest version of TransFolk includes the following updates:
 
 ## Main Features
 
-* Decoder-only Transformer architecture implemented with **PyTorch**.
+* Decoder-only Transformer architectures implemented with **PyTorch**.
 * Symbolic melody generation from learned folk-style representations.
 * Modular design prepared for future architectures, including encoder-decoder and hierarchical approaches.
 * Multiple tokenisation strategies:
@@ -166,7 +166,7 @@ The frontend provides the public user interface for generation and model inspect
 
 ---
 
-## Model Releases
+## Released and Experimental Models
 
 Released models are handled as deployable artifacts. A released model normally includes:
 
@@ -176,10 +176,39 @@ Released models are handled as deployable artifacts. A released model normally i
 
 The backend model registry reads available released models and exposes them to the frontend. This makes it possible to add new trained models without changing the frontend code, provided that the backend can access the corresponding weights and metadata.
 
-Current released model families include variants such as:
+The current model family explores several decoder-only Transformer variants. The main differences are model scale and positional/attention mechanism.
 
-* `mick003_todos_momet_x_x`
-* `mick006_todos_momet_x_x`
+| Model | Architecture | Embedding dim | Heads | Layers | FF dim | Dropout | Context | Attention | Activation | Positional encoding | Description |
+|---|---:|---:|---:|---:|---:|---:|---:|---|---|---|---|
+| `mick000` | `decoder_only_gpt` | 256 | 4 | 2 | 1024 | 0.1 | 512 | Causal self-attention | GELU | Learned | Lightweight GPT-style baseline for constrained inference and quick tests. |
+| `mick003` | `decoder_only_gpt` | 640 | 10 | 6 | 2048 | 0.1 | 512 | Causal self-attention | GELU | Learned | Medium GPT-style model with higher representational capacity than `mick000`. |
+| `mick006` | `decoder_only_gpt` | 768 | 12 | 10 | 3072 | 0.1 | 512 | Causal self-attention | GELU | Learned | Large GPT-style model intended for stronger symbolic modelling while remaining more practical than the largest configuration. |
+| `mick010` | `decoder_only_gpt` | 1024 | 16 | 12 | 4096 | 0.1 | 512 | Causal self-attention | GELU | Learned | Largest GPT-style configuration in the current family, designed for maximum capacity. |
+| `robb006` | `decoder_only_rope` | 768 | 12 | 10 | 3072 | 0.1 | 512 | Causal self-attention | GELU | Rotary | RoPE-based variant of the `006` scale, encoding positional information directly inside the attention mechanism. |
+| `john006` | `decoder_only_relative` | 768 | 12 | 10 | 3072 | 0.1 | 512 | Relative attention | GELU | Relative | Relative-attention variant of the `006` scale, designed to model pairwise token distances and repeated musical patterns. |
+
+### GPT-style `mick` models
+
+The `mick` models use a standard decoder-only GPT-style architecture with learned positional embeddings and causal self-attention. They differ mainly in scale:
+
+* `mick000` is the smallest model. It is useful for lightweight deployment, debugging, and low-memory inference.
+* `mick003` increases the embedding size, number of heads, and number of layers, providing a medium-capacity configuration.
+* `mick006` is a larger configuration with 768-dimensional embeddings, 12 attention heads, and 10 transformer layers.
+* `mick010` is the largest listed GPT-style model, with 1024-dimensional embeddings, 16 heads, 12 layers, and a 4096-dimensional feed-forward block.
+
+These models follow an autoregressive next-token prediction setup: each generated symbolic token is conditioned on the previously generated musical context.
+
+### RoPE-based `robb` model
+
+`robb006` keeps the same global scale as `mick006` but replaces learned positional embeddings with **Rotary Positional Embeddings**. RoPE injects positional information into the attention computation itself, which can improve the modelling of relative position and longer-range dependencies.
+
+This makes `robb006` useful for comparing standard learned-position GPT behaviour against a rotary-position alternative at the same model scale.
+
+### Relative-attention `john` model
+
+`john006` also keeps the same global scale as `mick006`, but uses **relative attention** instead of standard causal self-attention with learned positional embeddings. This architecture models pairwise token distances more explicitly, which is especially relevant for symbolic music because rhythmic patterns, motivic repetitions, and phrase-level structures often depend on relative positions rather than absolute sequence indices.
+
+This makes `john006` an experimental architecture for evaluating whether relative positional modelling improves folk melody generation.
 
 ---
 
